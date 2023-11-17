@@ -84,7 +84,7 @@ CPU_MODEL="${CPU_MODEL:-EPYC-v4}"
 GUEST_USER="${GUEST_USER:-amd}"
 GUEST_PASS="${GUEST_PASS:-amd}"
 GUEST_SSH_KEY_PATH="${GUEST_SSH_KEY_PATH:-${LAUNCH_WORKING_DIR}/${GUEST_NAME}/${GUEST_NAME}-key}"
-GUEST_ROOT_LABEL="${GUEST_ROOT_LABEL:-cloudimg-rootfs}"
+GUEST_ROOT_LABEL="${GUEST_ROOT_LABEL:-root}"
 GUEST_KERNEL_APPEND="root=LABEL=${GUEST_ROOT_LABEL} ro console=ttyS0"
 QEMU_CMDLINE_FILE="${QEMU_CMDLINE:-${LAUNCH_WORKING_DIR}/qemu.cmdline}"
 IMAGE="${IMAGE:-${LAUNCH_WORKING_DIR}/${GUEST_NAME}/${GUEST_NAME}.qcow2}"
@@ -654,7 +654,7 @@ save_binary_paths() {
 # Save binary paths in source file
 cat > "${SETUP_WORKING_DIR}/source-bins" <<EOF
 QEMU_BIN="${SETUP_WORKING_DIR}/AMDSEV/qemu/build/qemu-system-x86_64"
-OVMF_BIN="${SETUP_WORKING_DIR}/AMDSEV/ovmf/Build/OvmfX64/DEBUG_GCC5/FV/OVMF.fd"
+OVMF_BIN="${SETUP_WORKING_DIR}/AMDSEV/ovmf/Build/AmdSev/DEBUG_GCC5/FV/OVMF.fd"
 INITRD_BIN="${GENERATED_INITRD_BIN}"
 KERNEL_BIN="${guest_kernel}"
 EOF
@@ -862,14 +862,14 @@ build_and_install_amdsev() {
   sudo cp kvm.conf /etc/modprobe.d/
 
   # Get guest kernel version from the package
-  identify_guest_kernel_version
+  local guest_kernel_version=$(get_guest_kernel_version)
 
   # bzImage file location is same for ubuntu and RedHat
   local bzImage_file=$(find ${SETUP_WORKING_DIR}/AMDSEV/linux/guest -name "bzImage"| head -1)
-  cp -v $bzImage_file ${SETUP_WORKING_DIR}/AMDSEV/linux/guest/vmlinuz-$GUEST_SNP_KERNEL_VERSION
+  cp -v $bzImage_file ${SETUP_WORKING_DIR}/AMDSEV/linux/guest/vmlinuz-$guest_kernel_version
   
   # Install latest snp-release
-  cd $(ls -ltd snp-release*| grep -v gz| head -1)
+  cd $(ls -d snp-release-* | head -1)
 
   sudo ./install.sh
   
@@ -963,7 +963,7 @@ setup_and_launch_guest() {
 
     # Install the guest kernel, retrieve the initrd and then reboot
     local guest_kernel_version=$(get_guest_kernel_version)
-    guest_kernel_version="6.5.0-rc2-snp-guest-ad9c0bf475ec"
+  
     echo
     echo "guest_kernel_version = $guest_kernel_version"
     
@@ -1021,6 +1021,7 @@ setup_and_launch_guest() {
     
     # # Overwrite the initrd/initramfs file path in host
     GENERATED_INITRD_BIN=$(ls "${LAUNCH_WORKING_DIR}"/ini* )
+    echo "GENERATED_INITRD_BIN = ${GENERATED_INITRD_BIN}"
     save_binary_paths "${GENERATED_INITRD_BIN}"
 
     ssh_guest_command "sudo shutdown now" || true
@@ -1508,6 +1509,7 @@ main() {
       source "${LAUNCH_WORKING_DIR}/source-bins"
 
 <<<<<<< HEAD
+<<<<<<< HEAD
       verify_snp_host
       install_dependencies
 
@@ -1518,6 +1520,9 @@ main() {
 
 =======
       # verify_snp_host
+=======
+      verify_snp_host
+>>>>>>> ffc657b (RedHat launch-guest step executed successfully.)
       # install_dependencies
 >>>>>>> 8ba92f7 ((Rough Work) RHEL-setup_and_launch_guest() working fine for scp initrd from guest to host and changing source bins with correct initrd or initramfs file path.)
       setup_and_launch_guest
