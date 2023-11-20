@@ -960,64 +960,29 @@ setup_and_launch_guest() {
     # Launch qemu cmdline
     "${QEMU_CMDLINE_FILE}"
 
-
     # Install the guest kernel, retrieve the initrd and then reboot
     local guest_kernel_version=$(get_guest_kernel_version)
-  
-    echo
-    echo "guest_kernel_version = $guest_kernel_version"
     
     # initrd/initramfs
     local guest_initrd_basename="init*${guest_kernel_version}*"
-    echo
-    echo "guest_initrd_basename = $guest_initrd_basename"
+
     # Copy pckg into guest and Install 
-    
     local package_install_command=$(get_package_install_command)
     local guest_kernel_package=$(get_guest_kernel_package)
-
-    echo
-    echo "guest_kernel_package = $guest_kernel_package"
   
     wait_and_retry_command "scp_guest_command ${guest_kernel_package} ${GUEST_USER}@localhost:/home/${GUEST_USER}"
     ssh_guest_command "sudo $package_install_command /home/${GUEST_USER}/$(basename ${guest_kernel_package})"
 
-    echo
-    echo "Actual = /boot/init*6.5.0-rc2-snp-guest-ad9c0bf475ec*"
-
-    echo 
-    echo "Command = /boot/${guest_initrd_basename}"
-
     ssh_guest_command "ls /boot/${guest_initrd_basename} | grep -v kdump"
-    # ssh_guest_command "echo ${PWD}"
-    # Suggestion(TODO later):
-    # Copy initrd/initramfs file from guest into host
-      # 1. login as root user 
-      # 2. copy initrd/initramfs file from /boot/ to ~/ in the guest os
-      # 3. # Change initrd/initramfs file permission to 644 for successful scp of initrd(ubuntu)/initramfs(redhat)
-    #   # Change initrd/initramfs file permission to 644 for successful scp of initrd(ubuntu)/initramfs(redhat)
-    echo
-    echo "guest_kernel_version=$guest_kernel_version"
 
-    echo
-    echo "guest_initrd_basename=$guest_initrd_basename"
-
-    echo 
     local initrd_filepath=$(ssh_guest_command "ls /boot/${guest_initrd_basename} | grep -v kdump")
     initrd_filepath=$(echo $initrd_filepath| tr -d '\r')
     echo "initrd_filepath = $initrd_filepath"
 
-    # ssh_guest_command "$(ls -l $(realpath "/boot/${guest_initrd_basename}")| grep -v kdump)"
-    ssh_guest_command "sudo chmod 644  $(realpath ${initrd_filepath})"
-    echo
-    echo "realpath"
-    ssh_guest_command "sudo chmod 644 $(realpath $initrd_filepath)"
-    ssh_guest_command "ls -l $(realpath $initrd_filepath)"
-    # ssh_guest_command "ls -l "/boot/${guest_initrd_basename}" | grep -v kdump"
-    #   # To avoid error: chmod: intramfs.img <No such file or directory> when doing ssh into ubuntu guest from RedHat Host 
-    # guest_initrd_path=$(echo $(ssh_guest_command "realpath /boot/${guest_initrd_basename}*| grep -v kdump|head -1"))
-
-    scp_guest_command "${GUEST_USER}@localhost:${initrd_filepath}" "${LAUNCH_WORKING_DIR}"
+    # Copy initrd/initramfs into home folder; change its permission to 644 for performing scp from guest into host
+    ssh_guest_command "sudo cp  $(realpath ${initrd_filepath}) /home/${GUEST_USER}"
+    ssh_guest_command "sudo chmod 644  /home/${GUEST_USER}/$(basename $(realpath ${initrd_filepath}))"
+    scp_guest_command "${GUEST_USER}@localhost:/home/${GUEST_USER}/$(basename $(realpath ${initrd_filepath}))" "${LAUNCH_WORKING_DIR}"
     
     # # Overwrite the initrd/initramfs file path in host
     GENERATED_INITRD_BIN=$(ls "${LAUNCH_WORKING_DIR}"/ini* )
