@@ -658,6 +658,7 @@ build_guest_initrd() {
 }
 
 get_guest_kernel_version(){
+
   pushd "${SETUP_WORKING_DIR}/AMDSEV/linux/guest/" >/dev/null
 
     local kernel_version=$(cat .config | grep 'Linux/' | awk -F ' ' '{print $3}')
@@ -669,19 +670,20 @@ get_guest_kernel_version(){
 
 save_binary_paths() {
   # Referring to bzImage copied file
-  local guest_kernel=$(ls $(realpath "${SETUP_WORKING_DIR}/AMDSEV/linux/guest/vmlinuz*"))
   local guest_kernel_version=$(get_guest_kernel_version)
+  local guest_kernel=$(ls $(realpath "${SETUP_WORKING_DIR}/AMDSEV/linux/guest/vmlinuz-${guest_kernel_version}"))
   GENERATED_INITRD_BIN="${SETUP_WORKING_DIR}/initrd.img-${guest_kernel_version}"
 
  
 # Save binary paths in source file
-cat > "${SETUP_WORKING_DIR}/source-bins" <<EOF
-QEMU_BIN="${SETUP_WORKING_DIR}/AMDSEV/qemu/build/qemu-system-x86_64"
-OVMF_BIN="${SETUP_WORKING_DIR}/AMDSEV/ovmf/Build/AmdSev/DEBUG_GCC5/FV/OVMF.fd"
-INITRD_BIN="${GENERATED_INITRD_BIN}"
-KERNEL_BIN="${guest_kernel}"
+if [ ! -f "${SETUP_WORKING_DIR}/source-bins" ]; then
+  cat > "${SETUP_WORKING_DIR}/source-bins" <<EOF
+  QEMU_BIN="${SETUP_WORKING_DIR}/AMDSEV/qemu/build/qemu-system-x86_64"
+  OVMF_BIN="${SETUP_WORKING_DIR}/AMDSEV/ovmf/Build/AmdSev/DEBUG_GCC5/FV/OVMF.fd"
+  INITRD_BIN="${GENERATED_INITRD_BIN}"
+  KERNEL_BIN="${guest_kernel}"
 EOF
-
+fi
   # Not sure: To check if save_binary_path is called from setup_and_launch_guest()
 
   # if [[ ${FUNCNAME[1]} -eq "setup_and_launch_guest" ]]; then
@@ -689,15 +691,14 @@ EOF
   # fi
 
   # Update GENERATED_INITRD_PATH with $1 (correct file path after guest kernel installation)
-  if [ ! -z "$1" ]; then 
-      
+  if [ ! -z "$1" ]; then
       local line_starts_with="INITRD_BIN=" 
       local replace_with="INITRD_BIN=$1"   
       local file_to_replace="${SETUP_WORKING_DIR}/source-bins"
 
       # Using sed to replace the line starting with the specified word
       sed -i "/^${line_starts_with}.*/c\\${replace_with}" "${file_to_replace}"
-      
+
       # Update the INITRD variable in current script after replacement
       source "${SETUP_WORKING_DIR}/source-bins"
   fi
@@ -895,7 +896,7 @@ build_and_install_amdsev() {
   cp -v $bzImage_file ${SETUP_WORKING_DIR}/AMDSEV/linux/guest/vmlinuz-$guest_kernel_version
   
   # Install latest snp-release
-  cd $(ls -d snp-release-* | head -1)
+  cd $(ls -dt snp-release-* | grep -v tar| head -1)
 
   sudo ./install.sh
   
@@ -1011,8 +1012,9 @@ setup_and_launch_guest() {
     scp_guest_command "${GUEST_USER}@localhost:/home/${GUEST_USER}/$(basename $(realpath ${initrd_filepath}))" "${LAUNCH_WORKING_DIR}"
     
     # # Overwrite the initrd/initramfs file path in host
-    GENERATED_INITRD_BIN=$(ls "${LAUNCH_WORKING_DIR}"/ini* )
+    GENERATED_INITRD_BIN=$(ls "${LAUNCH_WORKING_DIR}"/ini*"${guest_kernel_version}" )
     echo "GENERATED_INITRD_BIN = ${GENERATED_INITRD_BIN}"
+
     save_binary_paths "${GENERATED_INITRD_BIN}"
 
     ssh_guest_command "sudo shutdown now" || true
@@ -1493,7 +1495,6 @@ main() {
       else
         build_and_install_amdsev "${AMDSEV_NON_UPM_BRANCH}"
       fi
-
       source "${SETUP_WORKING_DIR}/source-bins"
       set_grub_default_snp
       echo -e "\nThe host must be rebooted for changes to take effect"
@@ -1513,6 +1514,7 @@ main() {
 <<<<<<< HEAD
       verify_snp_host
       install_dependencies
+<<<<<<< HEAD
 
       # TEMPORARY until sev-snp-measure is updated to pass in TCB kernel modifier flags
       # Changes in AMDESE/linux set debug_swap on by default and affect the measurement
@@ -1526,12 +1528,17 @@ main() {
 >>>>>>> ffc657b (RedHat launch-guest step executed successfully.)
       # install_dependencies
 >>>>>>> 8ba92f7 ((Rough Work) RHEL-setup_and_launch_guest() working fine for scp initrd from guest to host and changing source bins with correct initrd or initramfs file path.)
+=======
+>>>>>>> 4d30c23 (Some function Fixes on ubuntu server)
       setup_and_launch_guest
       wait_and_retry_command verify_snp_guest
+<<<<<<< HEAD
 
       echo -e "Guest SSH port forwarded to host port: ${HOST_SSH_PORT}"
       echo -e "The guest is running in the background. Use the following command to access via SSH:"
       echo -e "ssh -p ${HOST_SSH_PORT} -i ${LAUNCH_WORKING_DIR}/snp-guest-key amd@localhost"
+=======
+>>>>>>> ad283d9 (Some function Fixes on ubuntu server)
       ;;
 
     attest-guest)
