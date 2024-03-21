@@ -2,7 +2,7 @@
 
 # export environment variable
 # ---------------------------------------------------------------------------------------------------------------------------------------------------------------
-source "$HOME/.bash_profile"
+# source "$HOME/.bash_profile"
 REDHAT_OFFLINE_TOKEN="${REDHAT_OFFLINE_TOKEN}"
 WORKING_DIR="${WORKING_DIR:-$HOME/snp}"
 LAUNCH_WORKING_DIR="${LAUNCH_WORKING_DIR:-${WORKING_DIR}/launch}"
@@ -43,6 +43,7 @@ search_and_download_redhat_guest_image(){
     local redhat_version=$(echo "${redhat_version//"VERSION_ID="/''}" | tr -d '"')  # Removes "VERSION_ID=" from "VERSION_ID=<X.X>"
 
     local save_rhel_downloads_folder=$(realpath "${LAUNCH_WORKING_DIR}/${GUEST_NAME}")
+
     local basefile="rhel-downloads-${redhat_version}.json"
     local rhel_available_downloads_json="${save_rhel_downloads_folder}/${basefile}"
 

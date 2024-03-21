@@ -681,7 +681,7 @@ copy_launch_binaries() {
   # initrd is copied after the first guest boot and is scp-ed off
   cp "${OVMF_BIN}" "${LAUNCH_WORKING_DIR}"
   #cp "${INITRD_BIN}" "${LAUNCH_WORKING_DIR}"
-  cp "${KERNEL_BIN}" "${LAUNCH_WORKING_DIR}"
+  # cp "${KERNEL_BIN}" "${LAUNCH_WORKING_DIR}"
 
 # Save binary paths in source file
 cat > "${LAUNCH_WORKING_DIR}/source-bins" <<EOF
@@ -929,22 +929,39 @@ setup_and_launch_guest() {
     wait_and_retry_command "scp_guest_command ${guest_kernel_package} ${GUEST_USER}@localhost:/home/${GUEST_USER}"
     ssh_guest_command "sudo $package_install_command /home/${GUEST_USER}/$(basename ${guest_kernel_package})"
 
-    local initrd_filepath=$(ssh_guest_command "ls /boot/${guest_initrd_basename} | grep -v kdump")
+    local initrd_filepath=$(ssh_guest_command "ls /boot/*init**snp* | grep -v kdump")
     initrd_filepath=$(echo $initrd_filepath| tr -d '\r')
 
     # Copy initrd/initramfs into home folder; change its permission to 644 for performing scp from guest into host
     ssh_guest_command "sudo cp  $(realpath ${initrd_filepath}) /home/${GUEST_USER}"
     ssh_guest_command "sudo chmod 644  /home/${GUEST_USER}/$(basename $(realpath ${initrd_filepath}))"
     scp_guest_command "${GUEST_USER}@localhost:/home/${GUEST_USER}/$(basename $(realpath ${initrd_filepath}))" "${LAUNCH_WORKING_DIR}"
-    
-    # Overwrite the initrd/initramfs file path in host
-    GENERATED_INITRD_BIN=$(ls ${LAUNCH_WORKING_DIR}/ini*${guest_kernel_version}* )
 
+
+
+    # Copy vmlinuz from guest into host since in the latest snp version "vmlinuz-6.8.0-rc5-snp-guest-cc2568386ccb" doesn't exist in guest
+    # Instead we find "vmlinuz-6.8.0-rc5-next-20240221-snp-guest-cc2568386ccb" which available inside guest only
+    local vmlinuz_filepath=$(ssh_guest_command "ls /boot/*vmlinuz**snp*")
+    vmlinuz_filepath=$(echo $vmlinuz_filepath| tr -d '\r')
+
+    ssh_guest_command "sudo cp  $(realpath ${vmlinuz_filepath}) /home/${GUEST_USER}"
+    ssh_guest_command "sudo chmod 644  /home/${GUEST_USER}/$(basename $(realpath ${vmlinuz_filepath}))"
+    scp_guest_command "${GUEST_USER}@localhost:/home/${GUEST_USER}/$(basename $(realpath ${vmlinuz_filepath}))" "${LAUNCH_WORKING_DIR}"
+
+    # Overwrite the downloaded guest vmlinuz file path in host
     ssh_guest_command "sudo shutdown now" || true
     echo "true" > "${guest_kernel_installed_file}"
 
-    # Update the initrd file path and name in the guest launch source-bins file
+    # Overwrite the downloaded initrd/initramfs file path in host
+    GENERATED_INITRD_BIN=$(ls ${LAUNCH_WORKING_DIR}/*init**snp* )
+
+    # Overwrite the downloaded vmlinuz(kernel_bin) file path in host
+    GENERATED_KERNEL_BIN=$(ls ${LAUNCH_WORKING_DIR}/*vmlinuz**snp* )
+
+    # Update the initrd file & kernel file path and name in the guest launch source-bins file
     sed -i -e "s|^\(INITRD_BIN=\).*$|\1\"${GENERATED_INITRD_BIN}\"|g" "${LAUNCH_WORKING_DIR}/source-bins"
+    sed -i -e "s|^\(KERNEL_BIN=\).*$|\1\"${GENERATED_KERNEL_BIN}\"|g" "${LAUNCH_WORKING_DIR}/source-bins"
+
 
     # A few seconds for shutdown to complete
     sleep 3
@@ -1403,27 +1420,16 @@ main() {
 
       copy_launch_binaries
       source "${LAUNCH_WORKING_DIR}/source-bins"
-
-<<<<<<< HEAD
-<<<<<<< HEAD
       verify_snp_host
       install_dependencies
-<<<<<<< HEAD
 
       # TEMPORARY until sev-snp-measure is updated to pass in TCB kernel modifier flags
       # Changes in AMDESE/linux set debug_swap on by default and affect the measurement
       sudo modprobe -r kvm_amd
       sudo modprobe kvm_amd debug_swap=0
 
-=======
-      # verify_snp_host
-=======
       verify_snp_host
->>>>>>> ffc657b (RedHat launch-guest step executed successfully.)
       # install_dependencies
->>>>>>> 8ba92f7 ((Rough Work) RHEL-setup_and_launch_guest() working fine for scp initrd from guest to host and changing source bins with correct initrd or initramfs file path.)
-=======
->>>>>>> 4d30c23 (Some function Fixes on ubuntu server)
       setup_and_launch_guest
       wait_and_retry_command verify_snp_guest
 
