@@ -296,6 +296,7 @@ rhel_install_dependencies() {
   # rhel_subscription_mgr_register
 
   # Build dependencies
+  sudo dnf install -y wget
   sudo dnf install -y git
   sudo dnf install -y make automake gcc gcc-c++ kernel-devel
 
