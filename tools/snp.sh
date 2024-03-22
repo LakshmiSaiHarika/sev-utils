@@ -1132,6 +1132,9 @@ fedora_install_dependencies() {
   sudo dnf remove nasm
   install_nasm_from_source
   sudo dnf install -y acpica-tools zstd rpm-build dwarves perl
+
+  # Group install
+  sudo dnf groupinstall -y "C Development Tools and Libraries" "Development Tools" "Headless Management"
   
   # # cloud-utils dependency
   # sudo dnf install -y cloud-init
