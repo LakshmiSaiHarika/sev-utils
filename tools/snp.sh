@@ -296,6 +296,8 @@ rhel_install_dependencies() {
   # rhel_subscription_mgr_register
 
   # Build dependencies
+   # Group install on RH provisioned RH Host
+  sudo dnf groupinstall -y "Headless Management" "Development Tools" "Container Management" "RPM Development Tools"
   sudo dnf install -y wget
   sudo dnf install -y git
   sudo dnf install -y make automake gcc gcc-c++ kernel-devel
@@ -348,9 +350,6 @@ rhel_install_dependencies() {
 
   # Installing additional dependencies on RHEL Host provisioned from satellite
   sudo dnf install -y bc wget
-
-  # Group install on RH provisioned RH Host
-  sudo dnf groupinstall -y "Headless Management" "Container Management"
 }
 
 install_dependencies(){
