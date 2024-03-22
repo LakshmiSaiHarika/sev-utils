@@ -1062,7 +1062,7 @@ rhel_install_dependencies() {
   sudo subscription-manager register --username ${RHEL_SUBS_MGR_USER} --password ${RHEL_SUBS_MGR_PASS} --force
 
   # ACL for setting access to /dev/sev
-  sudo apt install -y acl
+  sudo dnf install -y acl
 
   # Build dependencies
   sudo dnf install -y git
@@ -1116,7 +1116,7 @@ fedora_install_dependencies() {
   sudo dnf install -y git make ninja-build gcc glib2 glib2-devel pixman pixman-devel meson
   
   # ACL for setting access to /dev/sev
-  sudo apt install -y acl
+  sudo dnf install -y acl
   
   # For fix of FAILED: libqemuutil.a.p/util_async.c.o
   # Uncomment wget command for applying patch d66ba6dc for async.c as per https://gitlab.com/qemu-project/qemu/-/issues/1655
