@@ -1124,6 +1124,9 @@ fedora_install_dependencies() {
 
   sudo dnf install -y libuuid libuuid-devel
   sudo dnf install -y python
+  
+  # Additional dependencies install for Satellite Fedora Host
+  sudo dnf install -y bc wget
 
   # For fixing Failed to execute command make tbuild
   sudo dnf remove nasm
