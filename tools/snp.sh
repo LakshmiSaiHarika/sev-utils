@@ -91,8 +91,8 @@ IMAGE="${IMAGE:-${LAUNCH_WORKING_DIR}/${GUEST_NAME}/${GUEST_NAME}.qcow2}"
 GENERATED_INITRD_BIN="${SETUP_WORKING_DIR}/initrd.img"
 
 # Redhat Sensitive Credentials -- User must specify, no default value set
-RHEL_SUBS_MGR_USER="${RHEL_SUBS_MGR_USER}"
-RHEL_SUBS_MGR_PASS="${RHEL_SUBS_MGR_PASS}"
+RHEL_SUBS_MGR_USER="amd"
+RHEL_SUBS_MGR_PASS="amd"
 REDHAT_OFFLINE_TOKEN="${REDHAT_OFFLINE_TOKEN}"
 
 
@@ -293,7 +293,7 @@ rhel_subscription_mgr_register(){
 
 rhel_install_dependencies() {    
   # Step 1: Activate RedHat Subscription
-  rhel_subscription_mgr_register
+  # rhel_subscription_mgr_register
 
   # Build dependencies
   sudo dnf install -y git
