@@ -344,6 +344,9 @@ rhel_install_dependencies() {
   sudo dnf install -y genisoimage
 
   sudo dnf install -y curl
+
+  # Installing additional dependencies on RHEL Host provisioned from satellite
+  sudo dnf install -y bc
 }
 
 install_dependencies(){
