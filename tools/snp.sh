@@ -346,7 +346,7 @@ rhel_install_dependencies() {
   sudo dnf install -y curl
 
   # Installing additional dependencies on RHEL Host provisioned from satellite
-  sudo dnf install -y bc
+  sudo dnf install -y bc wget
 
   # Group install on RH provisioned RH Host
   sudo dnf groupinstall -y "Headless Management" "Container Management"
