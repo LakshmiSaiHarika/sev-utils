@@ -103,7 +103,7 @@ AMDSEV_NON_UPM_BRANCH="snp-non-upm"
 SNPGUEST_URL="https://github.com/virtee/snpguest.git"
 SNPGUEST_BRANCH="tags/v0.3.2"
 NASM_SOURCE_TAR_URL="https://www.nasm.us/pub/nasm/releasebuilds/2.16.01/nasm-2.16.01.tar.gz"
-CLOUD_INIT_IMAGE_URL="https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
+# CLOUD_INIT_IMAGE_URL initialized under set_cloud_init_url_based_on_linux_distribution()
 DRACUT_TARBALL_URL="https://github.com/dracutdevs/dracut/archive/refs/tags/059.tar.gz"
 
 
@@ -369,8 +369,10 @@ install_dependencies(){
     rhel)
       rhel_install_dependencies
       ;;
+    fedora)
+      fedora_install_dependencies
   esac
-  
+
   echo "true" > "${dependencies_installed_file}"
 }
 
@@ -378,33 +380,59 @@ ubuntu_set_grub_default_snp(){
   # Get the path to host kernel and the version for setting grub default
   local host_kernel_version=$(get_host_kernel_version)
 
-  if cat /etc/default/grub | grep "${host_kernel_version}" | grep -v "^#" 2>&1 >/dev/null; then
-    echo -e "Default grub already has SNP [${host_kernel_version}] set"
-    return 0
-  fi
+      if cat /etc/default/grub | grep "${host_kernel_version}" | grep -v "^#" 2>&1 >/dev/null; then
+        echo -e "Default grub already has SNP [${host_kernel_version}] set"
+        return 0
+      fi
 
-  # Retrieve snp submenu name from grub.cfg
-  local snp_submenu_name=$(cat /boot/grub/grub.cfg \
-    | grep -A1 "submenu.*Advanced options" \
-    | grep -B1 "${host_kernel_version}" \
-    | grep "submenu" \
-    | grep -o -P "(?<=').*" \
-    | grep -o -P "^[^']*")
+      # Retrieve snp submenu name from grub.cfg 
+      local snp_submenu_name=$(cat /boot/grub/grub.cfg \
+        | grep -A1 "submenu.*Advanced options" \
+        | grep -B1 "${host_kernel_version}" \
+        | grep "submenu" \
+        | grep -o -P "(?<=').*" \
+        | grep -o -P "^[^']*")
 
-  # Retrieve snp menuitem name from grub.cfg
-  local snp_menuitem_name=$(cat /boot/grub/grub.cfg \
-    | grep "menuentry.*${host_kernel_version}" \
-    | grep -v "(recovery mode)" \
-    | grep -o -P "(?<=').*" \
-    | grep -o -P "^[^']*")
+      # Retrieve snp menuitem name from grub.cfg
+      local snp_menuitem_name=$(cat /boot/grub/grub.cfg \
+        | grep "menuentry.*${host_kernel_version}" \
+        | grep -v "(recovery mode)" \
+        | grep -o -P "(?<=').*" \
+        | grep -o -P "^[^']*")
 
-  # Create default grub backup
-  sudo cp /etc/default/grub /etc/default/grub_bkup
-  
-  # Replace grub default with snp menuitem name
-  sudo sed -i -e "s|^\(GRUB_DEFAULT=\).*$|\1\"${snp_submenu_name}>${snp_menuitem_name}\"|g" "/etc/default/grub"
-  
-  sudo update-grub
+      # Create default grub backup
+      sudo cp /etc/default/grub /etc/default/grub_bkup
+      
+      # Replace grub default with snp menuitem name
+      sudo sed -i -e "s|^\(GRUB_DEFAULT=\).*$|\1\"${snp_submenu_name}>${snp_menuitem_name}\"|g" "/etc/default/grub"
+      
+      sudo update-grub
+      ;;
+
+    rhel | fedora) 
+      # Get the path to host kernel package and the version for setting grub default
+      
+      # From AMDSEV build for RedHat, we get kernel-<version>.rpm package
+      # (example) For RHEL, we get /linux/kernel-6.5.0_rc2_snp_host_ad9c0bf475ec-1.x86_64.rpm package
+      local host_kernel=$(echo $(realpath "${SETUP_WORKING_DIR}/AMDSEV/linux/kernel-[0-9]*host*.rpm"))   
+      local host_kernel_version=$(echo "${host_kernel}" | awk -F'-' '{print $2}')
+      
+      #After build, SNP Host kernel RPM Package Name has "_" in between(ex:kernel-6.5.0_rc2_snp_host_ad9c0bf475ec-1.x86_64.rpm)
+      #From /boot/, we have vmlinuz-6.5.0-rc2-snp-host-ad9c0bf475ec
+      #Getting correct snp kernel item for setting default, substituting Host kernel version from package name with '-'
+      local host_snp_kernel_version="vmlinuz-${host_kernel_version//_/-}"    
+
+      # Setting default to the snp kernel
+      # Note: Tested below command for present default-kernel=6.5.0-rc2-snp-host-ad9c0bf475ec before setting default
+      # Below command works even if the present default kernel version is same as host snp kernel package build
+      # Hence, giving no error
+      sudo grubby --set-default="$host_snp_kernel_version"
+
+      # Getting default kernel info
+      echo " Default kernel is:"
+      sudo grubby --default-kernel
+        ;;
+  esac
 }
 
 grubby_to_set_grub_default_snp(){  
@@ -664,7 +692,7 @@ save_binary_paths() {
 # Save binary paths in source file
 cat > "${SETUP_WORKING_DIR}/source-bins" <<EOF
 QEMU_BIN="${SETUP_WORKING_DIR}/AMDSEV/qemu/build/qemu-system-x86_64"
-OVMF_BIN="${SETUP_WORKING_DIR}/AMDSEV/ovmf/Build/AmdSev/DEBUG_GCC5/FV/OVMF.fd"
+OVMF_BIN="${SETUP_WORKING_DIR}/AMDSEV/ovmf/Build/OvmfX64/DEBUG_GCC5/FV/OVMF.fd"
 INITRD_BIN="${GENERATED_INITRD_BIN}"
 KERNEL_BIN="${guest_kernel}"
 EOF
@@ -1250,6 +1278,50 @@ attest_guest() {
     || { >&2 echo -e "FAIL: measurements do not match"; return 1; }
 }
 
+fedora_install_dependencies() {
+  local dependencies_installed_file="${WORKING_DIR}/dependencies_already_installed"
+  
+  check_if_dependencies_installed
+  # If dependencies already exist
+  if [[ $dependencies_installed -eq 1 ]]; then
+    return 0
+  fi
+  
+  # Build dependencies
+  sudo dnf update
+  sudo dnf install -y git make ninja-build gcc glib2 glib2-devel pixman pixman-devel meson
+  
+  # ACL for setting access to /dev/sev
+  sudo dnf install -y acl
+  
+  # For fix of FAILED: libqemuutil.a.p/util_async.c.o
+  # Uncomment wget command for applying patch d66ba6dc for async.c as per https://gitlab.com/qemu-project/qemu/-/issues/1655
+  # wget "https://raw.githubusercontent.com/qemu/qemu/d66ba6dc1cce914673bd8a89fca30a7715ea70d1/util/async.c" -O "${SETUP_WORKING_DIR}/AMDSEV/qemu/util/async.c"
+
+  sudo dnf install -y libuuid libuuid-devel
+  sudo dnf install -y python
+  
+  # Additional dependencies install for Satellite Fedora Host
+  sudo dnf install -y bc wget
+
+  # For fixing Failed to execute command make tbuild
+  sudo dnf remove nasm
+  install_nasm_from_source
+  sudo dnf install -y acpica-tools zstd rpm-build dwarves perl
+
+  # Group install
+  sudo dnf groupinstall -y "C Development Tools and Libraries" "Development Tools" "Headless Management"
+  
+  # # cloud-utils dependency
+  # sudo dnf install -y cloud-init
+  
+  # # sev-snp-measure
+  # sudo dnf install -y python3-pip
+
+  # install_common_dependencies
+  # echo "true" > "${dependencies_installed_file}"
+}
+
 check_if_redhat_credentials_set(){
   local flag=0
   if [ -z $RHEL_SUBS_MGR_USER ]; then
@@ -1392,8 +1464,11 @@ main() {
   done
   
   # Set SETUP_WORKING_DIR for non-upm
+    # COMMENT  
+    # I haven't tested 'sev-snp-devel'(no-upm) branch 
+    # as I was not sure if I can test this branch as I already installed snp kernel package from snp-latest branch
   if ! $UPM; then
-    SETUP_WORKING_DIR="${SETUP_WORKING_DIR}/non-upm"
+    SETUP_WORKING_DIR="${SETUP_WORKING_DIR}/sev-snp-devel"
   fi
 
   # Execute command
@@ -1406,7 +1481,6 @@ main() {
     setup-host)
       identify_linux_distribution_type
       install_dependencies
-
       if $UPM; then
         build_and_install_amdsev "${AMDSEV_DEFAULT_BRANCH}"
       else
@@ -1447,10 +1521,10 @@ main() {
     attest-guest)
       # identify_linux_distribution_type() checks if RedHat credentials are set which is dependency for rpm package installation in RedHat
       identify_linux_distribution_type
-
+      install_dependencies
       install_rust
       install_sev_snp_measure
-      install_dependencies
+      
       
       # Unregister RedHat subscription after all installation steps
       unregister_redhat_subscription
