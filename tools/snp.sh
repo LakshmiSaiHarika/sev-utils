@@ -407,44 +407,17 @@ ubuntu_set_grub_default_snp(){
       sudo sed -i -e "s|^\(GRUB_DEFAULT=\).*$|\1\"${snp_submenu_name}>${snp_menuitem_name}\"|g" "/etc/default/grub"
       
       sudo update-grub
-      ;;
-
-    rhel | fedora) 
-      # Get the path to host kernel package and the version for setting grub default
       
-      # From AMDSEV build for RedHat, we get kernel-<version>.rpm package
-      # (example) For RHEL, we get /linux/kernel-6.5.0_rc2_snp_host_ad9c0bf475ec-1.x86_64.rpm package
-      local host_kernel=$(echo $(realpath "${SETUP_WORKING_DIR}/AMDSEV/linux/kernel-[0-9]*host*.rpm"))   
-      local host_kernel_version=$(echo "${host_kernel}" | awk -F'-' '{print $2}')
-      
-      #After build, SNP Host kernel RPM Package Name has "_" in between(ex:kernel-6.5.0_rc2_snp_host_ad9c0bf475ec-1.x86_64.rpm)
-      #From /boot/, we have vmlinuz-6.5.0-rc2-snp-host-ad9c0bf475ec
-      #Getting correct snp kernel item for setting default, substituting Host kernel version from package name with '-'
-      local host_snp_kernel_version="vmlinuz-${host_kernel_version//_/-}"    
-
-      # Setting default to the snp kernel
-      # Note: Tested below command for present default-kernel=6.5.0-rc2-snp-host-ad9c0bf475ec before setting default
-      # Below command works even if the present default kernel version is same as host snp kernel package build
-      # Hence, giving no error
-      sudo grubby --set-default="$host_snp_kernel_version"
-
-      # Getting default kernel info
-      echo " Default kernel is:"
-      sudo grubby --default-kernel
-        ;;
-  esac
 }
 
 grubby_to_set_grub_default_snp(){  
   # Get the path to host kernel package and the version for setting grub default
-  local host_kernel_version=$(get_host_kernel_version)
-  local host_snp_kernel_version="vmlinuz-${host_kernel_version}"    
-
-  # check if the default kernel is set to latest snp kernel version
-  local default_grub_kernel=$(sudo grubby --default-kernel)
+  # local host_kernel_version=$(get_host_kernel_version)
+  local host_kernel_version=$(basename $(ls -t /boot/vmlinuz* | head -1))
+  # local host_snp_kernel_version="vmlinuz-${host_kernel_version}"    
 
   # Setting default to the snp kernel
-  sudo grubby --set-default="$host_snp_kernel_version"
+  sudo grubby --set-default="$host_kernel_version"
 }
 
 set_grub_default_snp() {
