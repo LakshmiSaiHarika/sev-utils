@@ -1257,6 +1257,8 @@ fedora_install_dependencies() {
   
    # Group install on RH provisioned RH Host
   sudo dnf groupinstall -y "C Development Tools and Libraries" "Development Tools" "Headless Management"
+  sudo dnf install -y tar
+  sudo dnf install -y rsync
   sudo dnf install -y git make ninja-build gcc glib2 glib2-devel pixman pixman-devel meson
   
   # ACL for setting access to /dev/sev
