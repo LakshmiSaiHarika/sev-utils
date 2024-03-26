@@ -1252,16 +1252,11 @@ attest_guest() {
 }
 
 fedora_install_dependencies() {
-  local dependencies_installed_file="${WORKING_DIR}/dependencies_already_installed"
-  
-  check_if_dependencies_installed
-  # If dependencies already exist
-  if [[ $dependencies_installed -eq 1 ]]; then
-    return 0
-  fi
-  
   # Build dependencies
   sudo dnf update
+  
+   # Group install on RH provisioned RH Host
+  sudo dnf groupinstall -y "C Development Tools and Libraries" "Development Tools" "Headless Management"
   sudo dnf install -y git make ninja-build gcc glib2 glib2-devel pixman pixman-devel meson
   
   # ACL for setting access to /dev/sev
@@ -1281,18 +1276,9 @@ fedora_install_dependencies() {
   sudo dnf remove nasm
   install_nasm_from_source
   sudo dnf install -y acpica-tools zstd rpm-build dwarves perl
-
-  # Group install
-  sudo dnf groupinstall -y "C Development Tools and Libraries" "Development Tools" "Headless Management"
   
-  # # cloud-utils dependency
-  # sudo dnf install -y cloud-init
-  
-  # # sev-snp-measure
-  # sudo dnf install -y python3-pip
-
-  # install_common_dependencies
-  # echo "true" > "${dependencies_installed_file}"
+  # cloud-utils dependency
+  sudo dnf install -y cloud-init
 }
 
 check_if_redhat_credentials_set(){
