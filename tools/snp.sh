@@ -217,6 +217,7 @@ install_sev_snp_measure() {
 }
 
 ubuntu_install_dependencies() {
+  sudo echo "deb http://security.ubuntu.com/ubuntu jammy-security main" >> /etc/apt/sources.list
   sudo aptitude update
   # Build dependencies
   sudo apt install -y build-essential git
