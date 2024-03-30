@@ -217,6 +217,7 @@ install_sev_snp_measure() {
 }
 
 ubuntu_install_dependencies() {
+  sudo aptitude update
   # Build dependencies
   sudo apt install -y build-essential git
 
