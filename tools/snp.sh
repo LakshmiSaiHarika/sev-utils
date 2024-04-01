@@ -218,10 +218,10 @@ install_sev_snp_measure() {
 
 ubuntu_install_dependencies() {
   sudo echo "deb http://security.ubuntu.com/ubuntu jammy-security main" >> /etc/apt/sources.list
-  sudo apt install -y aptitude
+  sudo DEBIAN_FRONTEND=noninteractive apt install -y aptitude
   sudo aptitude update
   # Build dependencies
-  sudo apt install -y build-essential git
+  sudo  DEBIAN_FRONTEND=noninteractive apt install -y build-essential git
 
   # ACL for setting access to /dev/sev
   sudo apt install -y acl
@@ -229,19 +229,19 @@ ubuntu_install_dependencies() {
   # qemu dependencies
   sudo apt install -y ninja-build pkg-config
   sudo apt install -y libglib2.0-dev
-  sudo apt install -y libpixman-1-dev
-  sudo apt install -y libslirp-dev
+  sudo  DEBIAN_FRONTEND=noninteractive apt install -y libpixman-1-dev
+  sudo  DEBIAN_FRONTEND=noninteractive apt install -y libslirp-dev
   
   # ovmf dependencies
-  sudo apt install -y python-is-python3 uuid-dev iasl
+  sudo  DEBIAN_FRONTEND=noninteractive apt install -y python-is-python3 uuid-dev iasl
   
   #sudo apt install -y nasm
   sudo apt purge nasm
-  install_nasm_from_source
+  DEBIAN_FRONTEND=noninteractive install_nasm_from_source
 
   # kernel dependencies
-  sudo apt install -y bc rsync
-  sudo apt install -y flex bison libncurses-dev libssl-dev libelf-dev dwarves zstd debhelper
+  sudo  DEBIAN_FRONTEND=noninteractive apt install  -y bc rsync
+  sudo DEBIAN_FRONTEND=noninteractive apt install -y flex bison libncurses-dev libssl-dev libelf-dev dwarves zstd debhelper
 
   # dracut dependencies
   # dracut-core in native distro package manager too old with many issues. It is now
@@ -264,7 +264,7 @@ ubuntu_install_dependencies() {
   # virt-resize currently does not work with cloud-init images. It changes the partition 
   # names and grub gets messed up. This dependency is removed for now due to this reason.
   #sudo apt install -y libguestfs-tools
-  sudo apt install -y qemu-utils
+  sudo  DEBIAN_FRONTEND=noninteractive apt install -y qemu-utils
 
   # pip needed for sev-snp-measure
   sudo apt install -y python3-pip
@@ -834,7 +834,7 @@ build_and_install_amdsev() {
   # Install latest snp-release
   cd $(ls -dt snp-release-* | grep -v tar| head -1)
 
-  sudo ./install.sh
+  sudo DEBIAN_FRONTEND=noninteractive ./install.sh
   
   popd >/dev/null
 
