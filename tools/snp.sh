@@ -237,10 +237,10 @@ ubuntu_install_dependencies() {
   
   #sudo apt install -y nasm
   sudo apt purge nasm
-  DEBIAN_FRONTEND=noninteractive install_nasm_from_source
+  sudo DEBIAN_FRONTEND=noninteractive install_nasm_from_source
 
   # kernel dependencies
-  sudo  DEBIAN_FRONTEND=noninteractive apt install  -y bc rsync
+  sudo DEBIAN_FRONTEND=noninteractive apt install  -y bc rsync
   sudo DEBIAN_FRONTEND=noninteractive apt install -y flex bison libncurses-dev libssl-dev libelf-dev dwarves zstd debhelper
 
   # dracut dependencies
@@ -258,16 +258,16 @@ ubuntu_install_dependencies() {
 
   # cloud-utils dependency
   # genisoimage for userdata and metadata seed
-  sudo apt install -y cloud-image-utils genisoimage curl
+  sudo DEBIAN_FRONTEND=noninteractive apt install -y cloud-image-utils genisoimage curl
 
   # Virtualization tools for resizing image
   # virt-resize currently does not work with cloud-init images. It changes the partition 
   # names and grub gets messed up. This dependency is removed for now due to this reason.
   #sudo apt install -y libguestfs-tools
-  sudo  DEBIAN_FRONTEND=noninteractive apt install -y qemu-utils
+  sudo DEBIAN_FRONTEND=noninteractive apt install -y qemu-utils
 
   # pip needed for sev-snp-measure
-  sudo apt install -y python3-pip
+  sudo DEBIAN_FRONTEND=noninteractive apt install -y python3-pip
 }
 
 rhel_subscription_mgr_register(){
