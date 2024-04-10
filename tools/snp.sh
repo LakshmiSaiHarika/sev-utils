@@ -1334,9 +1334,7 @@ identify_linux_distribution_type(){
       echo "Non-UPM for Fedora is not supported "
       return 1
     fi
-
-     # Setting SELinux mode from enforcing to permissive for avoiding Network issue(missing IP) after system reboot 
-     # sudo sed -i '/SELINUX=enforcing/c\SELINUX=permissive' /etc/selinux/config
+    
     ;;
   esac
 
