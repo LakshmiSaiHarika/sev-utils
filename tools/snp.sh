@@ -217,6 +217,8 @@ install_sev_snp_measure() {
 }
 
 ubuntu_install_dependencies() {
+  # To prevent ubuntu pop up "Daemons using outdated libraries" when using apt to install/update packages
+  sudo sed -i '/\#\$nrconf{restart} =/c\\$nrconf{restart} = \"a\";' /etc/needrestart/needrestart.conf
   sudo echo "deb http://security.ubuntu.com/ubuntu jammy-security main" >> /etc/apt/sources.list
   sudo DEBIAN_FRONTEND=noninteractive apt install -y aptitude
   sudo aptitude update
