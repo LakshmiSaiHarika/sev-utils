@@ -221,7 +221,7 @@ ubuntu_install_dependencies() {
   sudo DEBIAN_FRONTEND=noninteractive apt install -y aptitude
   sudo aptitude update
   # Build dependencies
-  sudo  DEBIAN_FRONTEND=noninteractive apt install -y build-essential git
+  sudo DEBIAN_FRONTEND=noninteractive apt install -y build-essential git
 
   # ACL for setting access to /dev/sev
   sudo apt install -y acl
@@ -229,14 +229,14 @@ ubuntu_install_dependencies() {
   # qemu dependencies
   sudo apt install -y ninja-build pkg-config
   sudo apt install -y libglib2.0-dev
-  sudo  DEBIAN_FRONTEND=noninteractive apt install -y libpixman-1-dev
-  sudo  DEBIAN_FRONTEND=noninteractive apt install -y libslirp-dev
+  sudo DEBIAN_FRONTEND=noninteractive apt install -y libpixman-1-0 libpixman-1-dev
+  sudo DEBIAN_FRONTEND=noninteractive apt install -y libslirp-dev
   
   # ovmf dependencies
-  sudo  DEBIAN_FRONTEND=noninteractive apt install -y python-is-python3 uuid-dev iasl
+  sudo DEBIAN_FRONTEND=noninteractive apt install -y python-is-python3 uuid-dev iasl
   
   #sudo apt install -y nasm
-  sudo apt purge nasm
+  # sudo apt purge nasm
   sudo DEBIAN_FRONTEND=noninteractive install_nasm_from_source
 
   # kernel dependencies
