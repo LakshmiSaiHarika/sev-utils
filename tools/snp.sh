@@ -236,7 +236,7 @@ ubuntu_install_dependencies() {
   sudo DEBIAN_FRONTEND=noninteractive apt install -y python-is-python3 uuid-dev iasl
 
   # Additional Packages to install on new Ubuntu 22.04 PXEBoot OS Image
-  sudo apt install -y  libblkid-dev libffi-dev libglib2.0-dev libglib2.0-dev-bin libmount-dev libpcre16-3 libpcre2-16-0 libpcre2-32-0 libpcre2-dev libpcre2-posix3 libpcre3-dev libpcre32-3 libpcrecpp0v5 libselinux1-dev libsepol-dev uuid-dev zlib1g-dev
+  sudo DEBIAN_FRONTEND=noninteractive apt install -y  libblkid-dev libffi-dev libglib2.0-dev libglib2.0-dev-bin libmount-dev libpcre16-3 libpcre2-16-0 libpcre2-32-0 libpcre2-dev libpcre2-posix3 libpcre3-dev libpcre32-3 libpcrecpp0v5 libselinux1-dev libsepol-dev uuid-dev zlib1g-dev
   
   #sudo apt install -y nasm
   # sudo apt purge nasm
