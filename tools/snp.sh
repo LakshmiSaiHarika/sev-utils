@@ -673,7 +673,7 @@ save_binary_paths() {
 # Save binary paths in source file
 cat > "${SETUP_WORKING_DIR}/source-bins" <<EOF
 QEMU_BIN="${SETUP_WORKING_DIR}/AMDSEV/qemu/build/qemu-system-x86_64"
-OVMF_BIN="${SETUP_WORKING_DIR}/AMDSEV/ovmf/Build/OvmfX64/DEBUG_GCC5/FV/OVMF.fd"
+OVMF_BIN="${SETUP_WORKING_DIR}/AMDSEV/ovmf/Build/AmdSev/DEBUG_GCC5/FV/OVMF.fd"
 INITRD_BIN="${GENERATED_INITRD_BIN}"
 KERNEL_BIN="${guest_kernel}"
 EOF
