@@ -478,6 +478,10 @@ download_cloud_init_image(){
       /bin/bash "$PWD/download_redhat_guest_image.sh"
       url_flag=0
       ;;
+    fedora)
+      # CLOUD_INIT_IMAG/E_URL="https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
+      CLOUD_INIT_IMAGE_URL="https://dl.fedoraproject.org/pub/fedora/linux/releases/38/Cloud/x86_64/images/Fedora-Cloud-Base-38-1.6.x86_64.qcow2"
+      ;;
   esac
   if [ $url_flag -eq 1 ];then
     # Download qcow2 image from static URL
@@ -880,7 +884,7 @@ get_guest_kernel_package(){
       ubuntu)
           echo $(realpath linux-image*snp-guest*.deb| grep -v dbg)
         ;;
-      rhel)
+      rhel | fedora)
           echo $(realpath $(ls -t kernel-*snp_guest*.rpm| grep -v header| head -1))
           ;;
     esac
@@ -892,7 +896,7 @@ get_package_install_command(){
     ubuntu)
       echo "dpkg -i"
       ;;
-    rhel)
+    rhel | fedora)
       echo "dnf install -y"
       ;;
   esac
@@ -954,7 +958,6 @@ setup_and_launch_guest() {
     # Copy pckg into guest and Install 
     wait_and_retry_command "scp_guest_command ${guest_kernel_package} ${GUEST_USER}@localhost:/home/${GUEST_USER}"
     ssh_guest_command "sudo $package_install_command /home/${GUEST_USER}/$(basename ${guest_kernel_package})"
-
     local initrd_filepath=$(ssh_guest_command "ls /boot/*init**snp* | grep -v kdump")
     initrd_filepath=$(echo $initrd_filepath| tr -d '\r')
 
@@ -1047,7 +1050,7 @@ ssh_guest_command() {
     -i ${GUEST_SSH_KEY_PATH} \
     -o "StrictHostKeyChecking no" \
     -o "PasswordAuthentication=no" \
-    -o ConnectTimeout=1 \
+    -o ConnectTimeout=10 \
     -t ${GUEST_USER}@localhost \
     "${1}")" "${?}" 1>&2) 2>&1)
 
