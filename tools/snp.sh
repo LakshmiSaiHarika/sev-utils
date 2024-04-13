@@ -219,9 +219,14 @@ install_sev_snp_measure() {
 ubuntu_install_dependencies() {
   # To prevent ubuntu pop up "Daemons using outdated libraries" when using apt to install/update packages
   sudo sed -i '/\#\$nrconf{restart} =/c\\$nrconf{restart} = \"a\";' /etc/needrestart/needrestart.conf
+
+  # On Ubuntu PXEBoot image, aptitude package is requirement for fix of Ubuntu Broken dependency issue on new Ubuntu 22.04 PXEBoot image 
+  sudo setfacl -m u:${GUEST_USER}:rw /etc/apt/sources.list
   sudo echo "deb http://security.ubuntu.com/ubuntu jammy-security main" >> /etc/apt/sources.list
+  sudo setfacl -m u:${GUEST_USER}:r /etc/apt/sources.list
   sudo DEBIAN_FRONTEND=noninteractive apt install -y aptitude
   sudo aptitude update
+
   # Build dependencies
   sudo DEBIAN_FRONTEND=noninteractive apt install -y build-essential git
 
@@ -821,6 +826,12 @@ build_and_install_amdsev() {
 
   # Fetch, checkout, update
   cd "AMDSEV"
+  
+  # Remove existing ovmf directory before build step for ovmf clean re-initialization when upgrading from 6.8.0-rc5 based SNP Hypervisor/Host kernels
+  if [  -d "ovmf" ]; then
+    rm -rf ovmf
+  fi  
+  
   git remote set-url current "${AMDSEV_URL}"
   git fetch current "${amdsev_branch}"
   git checkout "current/${amdsev_branch}"
@@ -965,6 +976,8 @@ setup_and_launch_guest() {
 
     # Overwrite the downloaded guest vmlinuz file path in host
     ssh_guest_command "sudo shutdown now" || true
+   
+
     echo "true" > "${guest_kernel_installed_file}"
 
     # Overwrite the downloaded initrd/initramfs file path in host
@@ -979,8 +992,8 @@ setup_and_launch_guest() {
 
 
     # A few seconds for shutdown to complete
-    sleep 3
-
+    sleep 10
+   
     # Call the launch-guest again now that the image is prepped
     setup_and_launch_guest
     return 0
@@ -1010,7 +1023,8 @@ setup_and_launch_guest() {
   add_qemu_cmdline_opts "-object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,kernel-hashes=on"
 
   # ovmf, initrd, kernel and append options
-  add_qemu_cmdline_opts "-drive if=pflash,format=raw,readonly=on,file=${OVMF_BIN}"
+  # add_qemu_cmdline_opts "-drive if=pflash,format=raw,readonly=on,file=${OVMF_BIN}"
+  add_qemu_cmdline_opts "-bios ${OVMF_BIN}"
   add_qemu_cmdline_opts "-initrd ${INITRD_BIN}"
   add_qemu_cmdline_opts "-kernel ${KERNEL_BIN}"
   add_qemu_cmdline_opts "-append \"${GUEST_KERNEL_APPEND}\""
@@ -1456,6 +1470,7 @@ main() {
       else
         build_and_install_amdsev "${AMDSEV_NON_UPM_BRANCH}"
       fi
+    
       source "${SETUP_WORKING_DIR}/source-bins"
       set_grub_default_snp
       echo -e "\nThe host must be rebooted for changes to take effect"
