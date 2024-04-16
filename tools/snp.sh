@@ -1278,7 +1278,7 @@ attest_guest() {
 
 fedora_install_dependencies() {
   # Build dependencies
-  sudo dnf update
+  sudo dnf -y update
   
    # Group install on RH provisioned RH Host
   sudo dnf groupinstall -y "C Development Tools and Libraries" "Development Tools" "Headless Management"
