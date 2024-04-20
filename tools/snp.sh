@@ -1324,6 +1324,7 @@ check_if_redhat_credentials_set(){
 
 identify_linux_distribution_type(){ 
   # Identify Linux Distribution type --Ubuntu/RedHat
+  local fedora_flag=0
   [ -e /etc/os-release ] && . /etc/os-release
 
   case ${ID,,} in
@@ -1346,16 +1347,20 @@ identify_linux_distribution_type(){
 
     fedora)
     LINUX_TYPE='fedora'
+    fedora_flag=1
 
     if [[ "$UPM" = false ]]; then
       echo "Non-UPM for Fedora is not supported "
       return 1
     fi
-    
+
+    GUEST_KERNEL_APPEND="root=LABEL=fedora ro rootflags=subvol=root console=ttys0"
     ;;
   esac
-
-  GUEST_KERNEL_APPEND="root=LABEL=${GUEST_ROOT_LABEL} ro console=ttyS0"
+  
+  if [[ ${fedora_flag} -eq 0  ]]; then
+    GUEST_KERNEL_APPEND="root=LABEL=${GUEST_ROOT_LABEL} ro console=ttyS0"
+  fi
 }
 
 unregister_redhat_subscription(){
@@ -1493,8 +1498,8 @@ main() {
 
       # TEMPORARY until sev-snp-measure is updated to pass in TCB kernel modifier flags
       # Changes in AMDESE/linux set debug_swap on by default and affect the measurement
-      sudo modprobe -r kvm_amd
-      sudo modprobe kvm_amd debug_swap=0
+      # sudo modprobe -r kvm_amd
+      # sudo modprobe kvm_amd debug_swap=0
 
       verify_snp_host
       # install_dependencies
@@ -1503,7 +1508,7 @@ main() {
 
       echo -e "Guest SSH port forwarded to host port: ${HOST_SSH_PORT}"
       echo -e "The guest is running in the background. Use the following command to access via SSH:"
-      echo -e "ssh -p ${HOST_SSH_PORT} -i ${LAUNCH_WORKING_DIR}/snp-guest-key amd@localhost"
+      echo -e "ssh -p ${HOST_SSH_PORT} -i ${GUEST_SSH_KEY_PATH} amd@localhost"
       ;;
 
     attest-guest)
