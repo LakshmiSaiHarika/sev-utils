@@ -479,7 +479,7 @@ download_cloud_init_image(){
       # Download guest image from the RedHat API
       wget "https://raw.githubusercontent.com/LakshmiSaiHarika/sev-utils/fedora-rhel-support-modified/tools/download_redhat_guest_image.sh" -O "/tmp/download_redhat_guest_image.sh"
       chmod +x "/tmp/download_redhat_guest_image.sh"
-      /bin/bash "/tmp/download_redhat_guest_image.sh"
+      sudo /bin/bash "/tmp/download_redhat_guest_image.sh"
       url_flag=0
       ;;
     fedora)
