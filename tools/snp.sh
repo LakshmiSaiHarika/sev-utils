@@ -93,7 +93,9 @@ GENERATED_INITRD_BIN="${SETUP_WORKING_DIR}/initrd.img"
 # Redhat Sensitive Credentials -- User must specify, no default value set
 RHEL_SUBS_MGR_USER="amd"
 RHEL_SUBS_MGR_PASS="amd"
-REDHAT_OFFLINE_TOKEN="${REDHAT_OFFLINE_TOKEN}"
+# REDHAT_OFFLINE_TOKEN="${REDHAT_OFFLINE_TOKEN}"
+REDHAT_OFFLINE_TOKEN=$(cat ~/.bash_profile| grep -i "REDHAT_OFFLINE_TOKEN")
+REDHAT_OFFLINE_TOKEN=$(echo "${REDHAT_OFFLINE_TOKEN//"REDHAT_OFFLINE_TOKEN="/''}" | tr -d '"') 
 
 
 # URLs and repos
