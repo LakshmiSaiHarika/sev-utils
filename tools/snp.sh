@@ -93,7 +93,7 @@ GENERATED_INITRD_BIN="${SETUP_WORKING_DIR}/initrd.img"
 # Redhat Sensitive Credentials -- User must specify, no default value set
 RHEL_SUBS_MGR_USER="amd"
 RHEL_SUBS_MGR_PASS="amd"
-sudo source "$HOME/.bash_profile"
+source "$HOME/.bash_profile"
 REDHAT_OFFLINE_TOKEN="${REDHAT_OFFLINE_TOKEN}"
 
 
