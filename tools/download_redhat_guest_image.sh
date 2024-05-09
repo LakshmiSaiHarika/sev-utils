@@ -26,7 +26,7 @@ save_rhel_download_options(){
     local parsed_data=$(echo "$downloads_api_response" | jq '.')
 
     # save it in a file
-    echo "$parsed_data" > "$2"
+    sudo echo "$parsed_data" > "$2"
 }
 
 download_rhel_guest_image(){
