@@ -477,7 +477,7 @@ download_cloud_init_image(){
       check_if_redhat_token_set
 
       # Download guest image from the RedHat API
-      /bin/bash "$PWD/download_redhat_guest_image.sh"
+      /bin/bash "/tmp/download_redhat_guest_image.sh"
       url_flag=0
       ;;
     fedora)
