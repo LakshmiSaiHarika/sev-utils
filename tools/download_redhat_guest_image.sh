@@ -3,7 +3,9 @@
 # export environment variable
 # ---------------------------------------------------------------------------------------------------------------------------------------------------------------
 # source "$HOME/.bash_profile"
-REDHAT_OFFLINE_TOKEN="${REDHAT_OFFLINE_TOKEN}"
+# REDHAT_OFFLINE_TOKEN="${REDHAT_OFFLINE_TOKEN}"
+REDHAT_OFFLINE_TOKEN=$(cat ~/.bash_profile| grep -i "REDHAT_OFFLINE_TOKEN")
+REDHAT_OFFLINE_TOKEN=$(echo "${REDHAT_OFFLINE_TOKEN//"REDHAT_OFFLINE_TOKEN="/''}" | tr -d '"') 
 WORKING_DIR="${WORKING_DIR:-$HOME/snp}"
 LAUNCH_WORKING_DIR="${LAUNCH_WORKING_DIR:-${WORKING_DIR}/launch}"
 GUEST_NAME="${GUEST_NAME:-snp-guest}"
