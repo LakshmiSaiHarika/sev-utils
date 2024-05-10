@@ -94,8 +94,8 @@ GENERATED_INITRD_BIN="${SETUP_WORKING_DIR}/initrd.img"
 RHEL_SUBS_MGR_USER="amd"
 RHEL_SUBS_MGR_PASS="amd"
 # REDHAT_OFFLINE_TOKEN="${REDHAT_OFFLINE_TOKEN}"
-REDHAT_OFFLINE_TOKEN=$(cat ~/.bash_profile| grep -i "REDHAT_OFFLINE_TOKEN")
-REDHAT_OFFLINE_TOKEN=$(echo "${REDHAT_OFFLINE_TOKEN//"REDHAT_OFFLINE_TOKEN="/''}" | tr -d '"') 
+# REDHAT_OFFLINE_TOKEN=$(cat ~/.bash_profile| grep -i "REDHAT_OFFLINE_TOKEN")
+# REDHAT_OFFLINE_TOKEN=$(echo "${REDHAT_OFFLINE_TOKEN//"REDHAT_OFFLINE_TOKEN="/''}" | tr -d '"') 
 
 
 # URLs and repos
@@ -1340,6 +1340,8 @@ identify_linux_distribution_type(){
     LINUX_TYPE='rhel'
     RHEL_VERSION=${VERSION_ID}
     GUEST_ROOT_LABEL="root"
+    REDHAT_OFFLINE_TOKEN=$(cat ~/.bash_profile| grep -i "REDHAT_OFFLINE_TOKEN")
+    REDHAT_OFFLINE_TOKEN=$(echo "${REDHAT_OFFLINE_TOKEN//"REDHAT_OFFLINE_TOKEN="/''}" | tr -d '"') 
 
     if [[ "$UPM" = false ]]; then
       echo "Non-UPM for Redhat is not supported "
