@@ -223,6 +223,7 @@ ubuntu_install_dependencies() {
   sudo sed -i '/\#\$nrconf{restart} =/c\\$nrconf{restart} = \"a\";' /etc/needrestart/needrestart.conf
 
   # On Ubuntu PXEBoot image, aptitude package is requirement for fix of Ubuntu Broken dependency issue on new Ubuntu 22.04 PXEBoot image 
+  sudo apt install -y acl
   sudo setfacl -m u:${GUEST_USER}:rw /etc/apt/sources.list
   sudo echo "deb http://security.ubuntu.com/ubuntu jammy-security main" >> /etc/apt/sources.list
   sudo setfacl -m u:${GUEST_USER}:r /etc/apt/sources.list
