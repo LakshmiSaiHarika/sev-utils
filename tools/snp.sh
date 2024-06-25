@@ -147,7 +147,6 @@ cleanup() {
 
       stop-guests)
         ;;
-
       *)
         >&2 echo -e "Unknown ERROR encountered"
       ;;
@@ -160,6 +159,43 @@ verify_snp_host() {
   if ! sudo dmesg | grep -i "SEV-SNP enabled" 2>&1 >/dev/null; then
     echo -e "SEV-SNP not enabled on the host. Please follow these steps to enable:\n\
     $(echo "${AMDSEV_URL}" | sed 's|\.git$||g')/tree/${AMDSEV_DEFAULT_BRANCH}#prepare-host"
+    return 1
+  fi
+}
+
+verify_platform_snp_bit_status() {
+  if [ "$1" == "host" ]; then
+    # Get the host cpuid eax
+    local host_cpuid_eax
+    host_cpuid_eax=$(get_cpuid 0x8000001f eax)
+
+    # Map all the computed host sev/snp bit values in a single associative array
+    declare -A actual_sev_snp_bit_status=(
+      [SME]=$(( (${host_cpuid_eax} >> 0) & 1))
+      [SEV]=$(( (${host_cpuid_eax} >> 1) & 1))
+      [SEV-ES]=$(( (${host_cpuid_eax} >> 3) & 1))
+      [SNP]=$(( (${host_cpuid_eax} >> 4) & 1))
+    )
+
+  fi
+
+  # Checks for the presence of all the security feature support in the platform
+  local sev_snp_error
+  sev_snp_error=""
+  for sev_snp_key in "${!actual_sev_snp_bit_status[@]}";
+  do
+      if [[ ${actual_sev_snp_bit_status[$sev_snp_key]} != 1 ]]; then
+        # Capture the host SEV/SNP bit value mismatch
+        if [ "$1" == "host" ]; then
+          sev_snp_error+=$(echo "$sev_snp_key support is not found on the host.\n");
+          sev_snp_error+=$(echo "Swap of a processor that supports $sev_snp_key feature is required. \n");
+          sev_snp_error+=$(echo "$sev_snp_key current bit value is: ${actual_sev_snp_bit_status[$sev_snp_key]} .\n")
+        fi
+      fi
+  done
+
+  if [[ ! -z "${sev_snp_error}" ]]; then
+    >&2 echo -e "ERROR: ${sev_snp_error}"
     return 1
   fi
 }
@@ -1196,6 +1232,7 @@ main() {
       ;;
 
     setup-host)
+      verify_platform_snp_bit_status host
       install_dependencies
 
       if $UPM; then
@@ -1218,6 +1255,7 @@ main() {
       copy_launch_binaries
       source "${LAUNCH_WORKING_DIR}/source-bins"
 
+      verify_platform_snp_bit_status host
       verify_snp_host
       install_dependencies
 
