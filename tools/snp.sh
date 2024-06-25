@@ -164,6 +164,58 @@ verify_snp_host() {
   fi
 }
 
+verify_if_host_is_snp_capable() {
+  # Get the host cpuid eax
+  local host_cpuid_eax=$(cpuid -1 -r -l 0x8000001f | grep -oE "eax=[[:alnum:]]+ " | cut -c5- | tr -d '[:space:]')
+
+  # Bit 0 indicates support for SME status
+  local sme_bit=1
+  local sme_status=$((host_cpuid_eax & sme_bit))
+
+  #  Bit 1 indicates support for SEV 
+  local sev_bit=2
+  local sev_status=$((host_cpuid_eax & sev_bit))
+
+  # Bit 3 indicates support for SEV-ES
+  local sev_es_bit=8
+  local sev_es_status=$((host_cpuid_eax & sev_es_bit))
+
+  # Bit 4 indicates support for SNP
+  local snp_bit=16
+  local snp_status=$((host_cpuid_eax & snp_bit))
+
+  # Map all sev features in a single associative array for all SEV features support in the processor
+  declare -A all_actual_results=(
+    [SME]=${sme_status} 
+    [SEV]=${sev_status}
+    [SEV-ES]=${sev_es_status} 
+    [SNP]=${snp_status}
+  )
+
+  declare -A results_to_match=(
+    [SME]=1 
+    [SEV]=2
+    [SEV-ES]=8
+    [SNP]=16
+    )
+
+  # conditional Check for presence of all security feature support in the processor
+  local hardware_support=1
+  for key in "${!all_actual_results[@]}";
+  do 
+    # echo "$key, value: ${languages[$key]} ${entries[$key]}";
+    if [[ ${all_actual_results[$key]} != ${results_to_match[$key]} ]]; then
+      echo "$key support is not found on the host, processor swap supporting $key feature is required";
+      echo "$key current bit value is: ${all_actual_results[$key]}"
+      hardware_support=0
+    fi
+  done
+
+  if [[ ${hardware_support} == 0 ]]; then
+    return 1
+  fi
+}
+
 install_nasm_from_source() {
   local nasm_dir_name=$(echo "${NASM_SOURCE_TAR_URL}" | sed "s|.*/\(.*\)|\1|g" | sed "s|.tar.gz||g")
   local nasm_dir="${WORKING_DIR}/${nasm_dir_name}"
@@ -1113,6 +1165,7 @@ main() {
       ;;
 
     setup-host)
+      verify_if_host_is_snp_capable
       install_dependencies
 
       if $UPM; then
