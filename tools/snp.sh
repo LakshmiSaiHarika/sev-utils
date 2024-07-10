@@ -110,10 +110,12 @@ SEV_SNP_MEASURE_VERSION="0.0.11"
 usage() {
   >&2 echo "Usage: $0 [OPTIONS] [COMMAND]"
   >&2 echo "  where COMMAND must be one of the following:"
-  >&2 echo "    setup-host            Build required SNP components and set up host"
-  >&2 echo "    launch-guest          Launch a SNP guest"
-  >&2 echo "    attest-guest          Use virtee/snpguest and sev-snp-measure to attest a SNP guest"
-  >&2 echo "    stop-guests           Stop all SNP guests started by this script"
+  >&2 echo "    setup-host               Build required SNP components and set up host"
+  >&2 echo "    launch-guest             Launch a SNP guest"
+  >&2 echo "    attest-guest             Use virtee/snpguest and sev-snp-measure to attest a SNP guest"
+  >&2 echo "    stop-guests              Stop all SNP guests started by this script"
+  >&2 echo "    check-snp-on-host-msr    Perform SNP Check on the host via msr check"
+  >&2 echo "    check-snp-on-guest-msr    Perform SNP Check on the guest via msr check"
   >&2 echo "  where OPTIONS are:"
   >&2 echo "    -n|--non-upm          Build AMDSEV non UPM kernel (sev-snp-devel)"
   >&2 echo "    -i|--image            Path to existing image file"
@@ -146,6 +148,12 @@ cleanup() {
         ;;
 
       stop-guests)
+        ;;
+
+      check-snp-on-host-msr)
+        ;;
+
+      check-snp-on-guest-msr)
         ;;
 
       *)
@@ -213,6 +221,10 @@ verify_if_host_is_snp_capable() {
 
   if [[ ${hardware_support} == 0 ]]; then
     return 1
+  fi
+
+  if [[ ${hardware_support} == 1 ]]; then
+    echo "SME, SEV, SEV-ES and SNP bits are active on the host via MSR cpuid instruction check"
   fi
 }
 
@@ -955,6 +967,10 @@ verify_guest_snp_bit_status_from_msr() {
   if [[ ${all_active_guest_sev_features} == 0 ]]; then
     return 1
   fi
+
+  if [[ ${all_active_guest_sev_features} == 1 ]]; then
+    echo "SEV, SEV-ES, SNP bits on the guest are active via MSR Check"
+  fi
 }
 
 wait_and_verify_snp_guest() {
@@ -1195,6 +1211,16 @@ main() {
         shift
         ;;
 
+      check-snp-on-host-msr)
+        COMMAND="check-snp-on-host-msr"
+        shift
+        ;;
+
+      check-snp-on-guest-msr)
+        COMMAND="check-snp-on-guest-msr"
+        shift
+        ;;
+
       -*|--*)
         >&2 echo -e "Unsupported Option: [${1}]\n"
         usage
@@ -1274,6 +1300,14 @@ main() {
 
     stop-guests)
       stop_guests
+      ;;
+
+    check-snp-on-host-msr)
+      verify_if_host_is_snp_capable
+      ;;
+
+    check-snp-on-guest-msr)
+      verify_guest_snp_bit_status_from_msr
       ;;
 
     *)
