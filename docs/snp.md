@@ -52,6 +52,12 @@ wget https://github.com/amd/sev-utils/raw/main/tools/snp.sh
 chmod +x snp.sh
 ```
 
+Read the dedicated host cpuid Fn8000_001F[EAX] instruction set to verify if the SNP is on and supported on the host:
+```
+./snp.sh check-host-snp-cpuid
+```
+
+
 Setup the host by building SNP patched versions of qemu, ovmf and the linux kernel:
 ```
 ./snp.sh setup-host
@@ -82,6 +88,10 @@ The `--non-upm` option can be specified with the above command if a non-upm vers
 of the kernel is desired. The `setup-host` command must be run with this same option 
 if launching the guest with a non-upm kernel.
 
+Read the dedicated guest MSR to determine if SNP is on and supported on the launched guest:
+```
+./snp.sh check-guest-snp-msr
+```
 Attest the guest using the following command:
 ```
 ./snp.sh attest-guest
