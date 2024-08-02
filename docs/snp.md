@@ -51,6 +51,11 @@ Download the script and add the execute permission:
 wget https://github.com/amd/sev-utils/raw/main/tools/snp.sh
 chmod +x snp.sh
 ```
+Verify if the host processor supports SEV, SEV-ES and SNP feautures by checking the host SEV, SEV-ES and SNP bit status from the instruction set CPUID Fn8000_001F[EAX] :
+```
+./snp.sh check-snp-on-host-msr
+```
+
 
 Setup the host by building SNP patched versions of qemu, ovmf and the linux kernel:
 ```
@@ -81,6 +86,11 @@ for ovmf, initrd, kernel and the kernel append parameters.
 The `--non-upm` option can be specified with the above command if a non-upm version 
 of the kernel is desired. The `setup-host` command must be run with this same option 
 if launching the guest with a non-upm kernel.
+
+Verify if the guest is SNP active by checking the guest SEV, SEV-ES and SNP bit status from SEV_STATUS MSR Address:
+```
+./snp.sh check-snp-on-guest-msr
+```
 
 Attest the guest using the following command:
 ```
