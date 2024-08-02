@@ -174,7 +174,8 @@ verify_snp_host() {
 
 verify_if_host_is_snp_capable() {
   # Get the host cpuid eax
-  local host_cpuid_eax=$(cpuid -1 -r -l 0x8000001f | grep -oE "eax=[[:alnum:]]+ " | cut -c5- | tr -d '[:space:]')
+  local host_cpuid_eax
+  host_cpuid_eax=$(cpuid -1 -r -l 0x8000001f | grep -oE "eax=[[:alnum:]]+ " | cut -c5- | tr -d '[:space:]')
 
   # Bit 0 indicates support for SME status
   local sme_bit=1
@@ -212,7 +213,7 @@ verify_if_host_is_snp_capable() {
   for key in "${!all_actual_results[@]}";
   do 
     # echo "$key, value: ${languages[$key]} ${entries[$key]}";
-    if [[ ${all_actual_results[$key]} != ${results_to_match[$key]} ]]; then
+    if [[ ${all_actual_results[$key]} != "${results_to_match[$key]}" ]]; then
       echo "$key support is not found on the host, processor swap supporting $key feature is required";
       echo "$key current bit value is: ${all_actual_results[$key]}"
       hardware_support=0
@@ -924,14 +925,15 @@ verify_guest_snp_bit_status_from_msr() {
   ssh_guest_command "sudo modprobe msr"
 
   # Get the guest (MSR_AMD64_SEV) value
-  local guest_msr_read=$(ssh_guest_command "sudo rdmsr -p 0 0xc0010131")
+  local guest_msr_read
+  guest_msr_read=$(ssh_guest_command "sudo rdmsr -p 0 0xc0010131")
   guest_msr_read=$(echo "$guest_msr_read" | tr -d '\r' | bc)
 
   # Bit 0 indicates support for Guest SEV feature 
   local sev_bit=1
   sev_status=$((guest_msr_read & sev_bit))
- 
 
+ 
   # Bit 1 indicates support for Guest SEV-ES feature 
   local sev_es_bit=2
   sev_es_status=$((guest_msr_read & sev_es_bit))
@@ -958,7 +960,7 @@ verify_guest_snp_bit_status_from_msr() {
   local all_active_guest_sev_features=1
   for key in "${!all_actual_results[@]}";
   do 
-    if [[ ${all_actual_results[$key]} != ${results_to_match[$key]} ]]; then
+    if [[ ${all_actual_results[$key]} != "${results_to_match[$key]}" ]]; then
       echo "$key feature is not active on the guest";
       all_active_guest_sev_features=0
     fi
