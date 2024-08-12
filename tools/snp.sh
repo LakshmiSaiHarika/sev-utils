@@ -90,6 +90,9 @@ QEMU_CMDLINE_FILE="${QEMU_CMDLINE:-${LAUNCH_WORKING_DIR}/qemu.cmdline}"
 IMAGE="${IMAGE:-${LAUNCH_WORKING_DIR}/${GUEST_NAME}.img}"
 GENERATED_INITRD_BIN="${SETUP_WORKING_DIR}/initrd.img"
 
+RHEL_SUBS_MGR_USER="${RHEL_SUBS_MGR_USER}"
+RHEL_SUBS_MGR_PASS="${RHEL_SUBS_MGR_PASS}"
+
 # URLs and repos
 AMDSEV_URL="https://github.com/ryansavino/AMDSEV.git"
 AMDSEV_DEFAULT_BRANCH="snp-latest-fixes"
@@ -172,9 +175,6 @@ install_nasm_from_source() {
     echo -e "nasm directory detected, skipping the build and install for nasm"
     return 0
   fi
-
-  # Remove package manager nasm
-  sudo apt purge nasm
   
   pushd "${WORKING_DIR}" >/dev/null
 
@@ -214,7 +214,27 @@ install_sev_snp_measure() {
   pip install sev-snp-measure==${SEV_SNP_MEASURE_VERSION}
 }
 
-install_dependencies() {
+identify_linux_distribution_type(){
+  [ -e /etc/os-release ] && . /etc/os-release
+
+  case ${ID,,} in
+    ubuntu | debian)
+    LINUX_TYPE='ubuntu'
+    ;;
+
+    rhel)
+    LINUX_TYPE='rhel'
+
+    if [[ "$UPM" = false ]]; then
+      echo "Non-UPM for Redhat is not supported "
+      return 1
+    fi
+
+    esac
+}
+
+install_dependencies(){
+  identify_linux_distribution_type
   local dependencies_installed_file="${WORKING_DIR}/dependencies_already_installed"
   source "${HOME}/.cargo/env" 2>/dev/null || true
 
@@ -223,6 +243,20 @@ install_dependencies() {
     return 0
   fi
 
+  # Linux Distribution specific installation
+  case ${LINUX_TYPE} in
+    ubuntu)
+      ubuntu_install_dependencies
+      ;;
+    rhel)
+      rhel_install_dependencies
+      ;;
+  esac
+
+  echo "true" > "${dependencies_installed_file}"
+}
+
+ubuntu_install_dependencies() {
   # Build dependencies
   sudo apt install -y build-essential git
 
@@ -268,8 +302,84 @@ install_dependencies() {
 
   # pip needed for sev-snp-measure
   sudo apt install -y python3-pip
+}
+
+register_rhel_subscription_mgr(){
+ if [ -z $RHEL_SUBS_MGR_USER ]; then
+   echo "set environment variable RHEL_SUBS_MGR_USER to RedHat Portal Username"
+   return 1
+ fi
+
+  if [ -z $RHEL_SUBS_MGR_PASS ]; then
+    echo "set environment variable RHEL_SUBS_MGR_PASS to RedHat Portal Password"
+    return 1
+  fi
+
+  # Activate RedHat Subscription
+  sudo subscription-manager register --username ${RHEL_SUBS_MGR_USER} --password ${RHEL_SUBS_MGR_PASS} --force
+}
+
+check_rhel_subscription_mgr_status(){
+  local subscription_manager_status=$(sudo subscription-manager status| grep "Overall Status" )
+
+  # Convert to lowercase for case in-sesitive match
+  local subscription_manager_status=${subscription_manager_status,,}
+
+  # Added different keyterms for RedHat system unregister status like unknown, unregister, etc.
+  local unregister_key_terms=( "unknown" "unregister"  )
+
+  # Register only when the system subscription status shows unregistered key term.
+  for each_word in "${unregister_key_terms[@]}";do
+    case "${subscription_manager_status}" in
+      *"$each_word"*)
+
+        register_rhel_subscription_mgr
+        break
+        ;;
+    esac
+  done
+}
+
+rhel_install_dependencies() {
+  # Check and activate RedHat Subscription if system is unregistered with RHEL
+  check_rhel_subscription_mgr_status
+
+  # Build dependencies
+  sudo dnf install -y wget curl
+  sudo dnf install -y git
+  sudo dnf install -y make automake gcc gcc-c++ kernel-devel
+
+  # make dependencies
+  sudo dnf install -y libuuid-devel dwarves perl
+
+  # Enable RedHat Repository for qemu dependencies
+  sudo subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms
+
+  # qemu dependencies
+  sudo dnf install -y ninja-build
+  sudo dnf install -y pkg-config
+  sudo dnf install  -y glib2-devel
+  sudo dnf install  -y pixman-devel
+  sudo dnf install -y libslirp-devel
+
+  # ovmf dependencies
+  sudo dnf install -y uuid-devel
+  sudo dnf install -y iasl
+  install_nasm_from_source
+
+  # kernel dependencies
+  sudo dnf install -y bc rsync
+  sudo dnf install -y ncurses-devel
   
-  echo "true" > "${dependencies_installed_file}"
+  # libssl-dev is openssl-devel in RHEL
+  # rpm-build -- Scripts and executable programs used to build packages
+  sudo dnf install -y rpm-build
+
+  # cloud-utils dependency
+  sudo dnf install -y cloud-init
+
+  # sev-snp-measure
+  sudo dnf install -y python3-pip
 }
 
 # Retrieve SNP host kernel from the host kernel config file via host kernel version & kernel hash parameters
