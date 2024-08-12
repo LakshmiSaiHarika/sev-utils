@@ -404,7 +404,7 @@ get_host_kernel_version() {
   echo "${host_kernel}"
 }
 
-set_grub_default_snp() {
+ubuntu_set_grub_default_snp() {
   # Get the path to host kernel and the version for setting grub default
   local host_kernel_version=$(get_host_kernel_version)
 
@@ -436,6 +436,28 @@ set_grub_default_snp() {
   
   sudo update-grub
 }
+
+grubby_to_set_grub_default_snp(){
+  # Get the SNP host latest version from snp host kernel config
+  local snp_host_kernel_version=$(get_host_kernel_version)
+  local grubby_default_snp_host_kernel=$(basename $(ls -t /boot/vmlinuz*${snp_host_kernel_version}* | head -1))
+
+  # Set the default host kernel to the snp latest kernel version
+  sudo grubby --set-default="/boot/${grubby_default_snp_host_kernel}"
+}
+
+set_grub_default_snp() {
+  case ${LINUX_TYPE} in
+    ubuntu)
+      ubuntu_set_grub_default_snp
+      ;;
+
+    rhel)
+      grubby_to_set_grub_default_snp
+      ;;
+  esac
+}
+
 
 generate_guest_ssh_keypair() {
   if [[ -f "${GUEST_SSH_KEY_PATH}" \
