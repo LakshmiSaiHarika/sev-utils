@@ -234,6 +234,7 @@ identify_linux_distribution_type(){
 }
 
 install_dependencies(){
+  identify_linux_distribution_type
   local dependencies_installed_file="${WORKING_DIR}/dependencies_already_installed"
   source "${HOME}/.cargo/env" 2>/dev/null || true
 
@@ -437,23 +438,37 @@ ubuntu_set_grub_default_snp() {
   sudo update-grub
 }
 
-grubby_to_set_grub_default_snp(){
+rhel_set_grub_default_snp(){
   # Get the SNP host latest version from snp host kernel config
   local snp_host_kernel_version=$(get_host_kernel_version)
-  local grubby_default_snp_host_kernel=$(basename $(ls -t /boot/vmlinuz*${snp_host_kernel_version}* | head -1))
 
-  # Set the default host kernel to the snp latest kernel version
-  sudo grubby --set-default="/boot/${grubby_default_snp_host_kernel}"
+  # Retrieve snp menuitem name from grub.cfg
+  local snp_menuitem_name=$(sudo cat /boot/grub2/grub.cfg \
+    | grep "menuentry.*${snp_host_kernel_version}" \
+    | grep -v "(recovery mode)" \
+    | grep -o -P "(?<=').*" \
+    | grep -o -P "^[^']*")
+  
+  # Create default grub backup
+  sudo cp /etc/default/grub /etc/default/grub_bkup
+
+  # Replace grub default with snp menuitem name
+  sudo sed -i -e "s|^\(GRUB_DEFAULT=\).*$|\1\"${snp_menuitem_name}\"|g" "/etc/default/grub"
+  
+  # Regenerate GRUB configuration for UEFI based machine or BIOS based machine
+  [ -d /sys/firmware/efi ] && sudo grub2-mkconfig -o /boot/efi/EFI/redhat/grub.cfg || sudo grub2-mkconfig -o /boot/grub2/grub.cfg
 }
 
 set_grub_default_snp() {
+  identify_linux_distribution_type
+
   case ${LINUX_TYPE} in
     ubuntu)
       ubuntu_set_grub_default_snp
       ;;
 
     rhel)
-      grubby_to_set_grub_default_snp
+      rhel_set_grub_default_snp
       ;;
   esac
 }
@@ -1258,16 +1273,15 @@ main() {
       ;;
 
     setup-host)
-      identify_linux_distribution_type
-      install_dependencies
+      # install_dependencies
 
-      if $UPM; then
-        build_and_install_amdsev "${AMDSEV_DEFAULT_BRANCH}"
-      else
-        build_and_install_amdsev "${AMDSEV_NON_UPM_BRANCH}"
-      fi
+      # if $UPM; then
+      #   build_and_install_amdsev "${AMDSEV_DEFAULT_BRANCH}"
+      # else
+      #   build_and_install_amdsev "${AMDSEV_NON_UPM_BRANCH}"
+      # fi
 
-      source "${SETUP_WORKING_DIR}/source-bins"
+      # source "${SETUP_WORKING_DIR}/source-bins"
       set_grub_default_snp
       echo -e "\nThe host must be rebooted for changes to take effect"
       ;;
