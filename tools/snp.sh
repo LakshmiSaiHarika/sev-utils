@@ -256,6 +256,10 @@ install_dependencies(){
   echo "true" > "${dependencies_installed_file}"
 }
 
+install_pip_dependencies(){
+  pip install tomli
+}
+
 ubuntu_install_dependencies() {
   # Build dependencies
   sudo apt install -y build-essential git
@@ -302,6 +306,9 @@ ubuntu_install_dependencies() {
 
   # pip needed for sev-snp-measure
   sudo apt install -y python3-pip
+
+  # To address tomli pyenv issue during latest SNP kernel build
+  install_pip_dependencies
 }
 
 register_rhel_subscription_mgr(){
@@ -380,6 +387,9 @@ rhel_install_dependencies() {
 
   # sev-snp-measure
   sudo dnf install -y python3-pip
+
+  # To address tomli pyenv issue during latest SNP kernel build
+  install_pip_dependencies
 }
 
 # Retrieve SNP host kernel from the host kernel config file via host kernel version & kernel hash parameters
