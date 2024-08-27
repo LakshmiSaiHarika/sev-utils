@@ -91,8 +91,8 @@ IMAGE="${IMAGE:-${LAUNCH_WORKING_DIR}/${GUEST_NAME}.img}"
 GENERATED_INITRD_BIN="${SETUP_WORKING_DIR}/initrd.img"
 
 # URLs and repos
-AMDSEV_URL="https://github.com/ryansavino/AMDSEV.git"
-AMDSEV_DEFAULT_BRANCH="snp-latest-fixes"
+AMDSEV_URL="https://github.com/LakshmiSaiHarika/AMDSEV.git"
+AMDSEV_DEFAULT_BRANCH="build-and-install-kernel-upstream"
 AMDSEV_NON_UPM_BRANCH="snp-non-upm"
 SNPGUEST_URL="https://github.com/virtee/snpguest.git"
 SNPGUEST_BRANCH="tags/v0.3.2"
@@ -582,7 +582,7 @@ build_base_qemu_cmdline() {
   add_qemu_cmdline_opts "-smp ${GUEST_SMP}"
   add_qemu_cmdline_opts "-m ${GUEST_MEM_SIZE_MB}M"
   add_qemu_cmdline_opts "-no-reboot"
-  add_qemu_cmdline_opts "-vga std"
+  add_qemu_cmdline_opts "-vga none"
   add_qemu_cmdline_opts "-monitor pty"
   add_qemu_cmdline_opts "-daemonize"
 
@@ -591,7 +591,7 @@ build_base_qemu_cmdline() {
   add_qemu_cmdline_opts "-device virtio-net-pci,disable-legacy=on,iommu_platform=true,netdev=vmnic,romfile="
 
   # Storage
-  add_qemu_cmdline_opts "-device virtio-scsi-pci,id=scsi0,disable-legacy=on,iommu_platform=true"
+  add_qemu_cmdline_opts "-device virtio-scsi-pci,id=scsi0,disable-legacy=on,iommu_platform=true,romfile="
   add_qemu_cmdline_opts "-device scsi-hd,drive=disk0"
   add_qemu_cmdline_opts "-drive if=none,id=disk0,format=qcow2,file=${IMAGE}"
 
