@@ -268,6 +268,9 @@ install_dependencies() {
 
   # pip needed for sev-snp-measure
   sudo apt install -y python3-pip
+
+  # pip dependency for the 6.11.rc3 kernel installation on the host
+  pip install tomli
   
   echo "true" > "${dependencies_installed_file}"
 }
