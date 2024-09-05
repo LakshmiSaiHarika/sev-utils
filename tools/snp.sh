@@ -476,7 +476,7 @@ ubuntu_set_grub_default_snp() {
   sudo update-grub
 }
 
-rhel_set_grub_default_snp(){
+rhel_fedora_grub_default_snp(){
   # Get the SNP host latest version from snp host kernel config
   local snp_host_kernel_version=$(get_host_kernel_version)
 
@@ -494,7 +494,14 @@ rhel_set_grub_default_snp(){
   sudo sed -i -e "s|^\(GRUB_DEFAULT=\).*$|\1\"${snp_menuitem_name}\"|g" "/etc/default/grub"
 
   # Regenerate GRUB configuration for UEFI based machine or BIOS based machine
-  [ -d /sys/firmware/efi ] && sudo grub2-mkconfig -o /boot/efi/EFI/redhat/grub.cfg || sudo grub2-mkconfig -o /boot/grub2/grub.cfg
+  case ${LINUX_TYPE} in
+    rhel)
+      [ -d /sys/firmware/efi ] && sudo grub2-mkconfig -o /boot/efi/EFI/redhat/grub.cfg || sudo grub2-mkconfig -o /boot/grub2/grub.cfg
+      ;;
+
+    fedora)
+      [ -d /sys/firmware/efi ] && sudo grub2-mkconfig -o /boot/efi/EFI/fedora/grub.cfg || sudo grub2-mkconfig -o /boot/grub2/grub.cfg
+  esac
 }
 
 set_grub_default_snp() {
@@ -506,8 +513,10 @@ set_grub_default_snp() {
       ;;
 
     rhel)
-      rhel_set_grub_default_snp
+      rhel_fedora_grub_default_snp
       ;;
+    fedora)
+      rhel_fedora_grub_default_snp
   esac
 }
 
