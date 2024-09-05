@@ -95,7 +95,7 @@ RHEL_SUBS_MGR_PASS="${RHEL_SUBS_MGR_PASS}"
 
 # URLs and repos
 AMDSEV_URL="https://github.com/LakshmiSaiHarika/AMDSEV.git"
-AMDSEV_DEFAULT_BRANCH="rhel-setup-host"
+AMDSEV_DEFAULT_BRANCH="fedora-build-install-upstream-kernel"
 AMDSEV_NON_UPM_BRANCH="snp-non-upm"
 SNPGUEST_URL="https://github.com/virtee/snpguest.git"
 SNPGUEST_BRANCH="tags/v0.3.2"
