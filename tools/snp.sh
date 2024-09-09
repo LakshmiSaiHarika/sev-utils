@@ -944,6 +944,31 @@ build_and_install_amdsev() {
   save_binary_paths
 }
 
+get_guest_kernel_package(){
+
+ pushd "${SETUP_WORKING_DIR}/AMDSEV/linux" >/dev/null
+    case ${LINUX_TYPE} in
+      ubuntu)
+          echo $(realpath linux-image*snp-guest*.deb| grep -v dbg)
+        ;;
+      rhel | fedora)
+          echo $(realpath $(ls -t kernel-*snp_guest*.rpm| grep -v header| head -1))
+          ;;
+    esac
+  popd>/dev/null
+}
+
+get_package_install_command(){
+    case ${LINUX_TYPE} in
+    ubuntu)
+      echo "dpkg -i"
+      ;;
+    rhel | fedora)
+      echo "dnf install -y"
+      ;;
+  esac
+}
+
 setup_and_launch_guest() {
   # Return error if user specified file that doesn't exist
   if [ ! -f "${IMAGE}" ] && ${SKIP_IMAGE_CREATE}; then
@@ -988,16 +1013,46 @@ setup_and_launch_guest() {
 
     # Install the guest kernel, retrieve the initrd and then reboot
     local guest_kernel_version=$(get_guest_kernel_version)
-    local guest_kernel_deb=$(echo "$(realpath ${SETUP_WORKING_DIR}/AMDSEV/linux/linux-image*snp-guest*.deb)" | grep -v dbg)
-    local guest_initrd_basename="initrd.img-${guest_kernel_version}"
-    wait_and_retry_command "scp_guest_command ${guest_kernel_deb} ${GUEST_USER}@localhost:/home/${GUEST_USER}"
-    ssh_guest_command "sudo dpkg -i /home/${GUEST_USER}/$(basename ${guest_kernel_deb})"
-    scp_guest_command "${GUEST_USER}@localhost:/boot/${guest_initrd_basename}" "${LAUNCH_WORKING_DIR}"
+
+    # Guest initial ram disk file pattern could be initrd/initramfs based on OS
+    local guest_initrd_basename="init*${guest_kernel_version}*"
+
+    # Define the package manager command of the Guest OS
+    local package_install_command=$(get_package_install_command)
+
+    # Locate guest kernel package in the host
+    local guest_kernel_package=$(get_guest_kernel_package)
+
+    # Copy the built SNP guest kernel package into the guest
+    wait_and_retry_command "scp_guest_command ${guest_kernel_package} ${GUEST_USER}@localhost:/home/${GUEST_USER}"
+
+    # Install the guest SNP kernel package inside the guest
+    ssh_guest_command "sudo $package_install_command /home/${GUEST_USER}/$(basename ${guest_kernel_package})"
+
+    # Copy the installed guest initial ram disk (guest initrd/initramfs) into the host
+    local initrd_filepath=$(ssh_guest_command "ls /boot/*init**snp* | grep -v kdump")
+    initrd_filepath=$(echo $initrd_filepath| tr -d '\r')
+    ssh_guest_command "sudo cp  $(realpath ${initrd_filepath}) /home/${GUEST_USER}"
+    ssh_guest_command "sudo chmod 644  /home/${GUEST_USER}/$(basename $(realpath ${initrd_filepath}))"
+    scp_guest_command "${GUEST_USER}@localhost:/home/${GUEST_USER}/$(basename $(realpath ${initrd_filepath}))" "${LAUNCH_WORKING_DIR}"
+
+    # Copy the installed SNP guest kernel from the guest into the host
+    local vmlinuz_filepath=$(ssh_guest_command "ls /boot/*vmlinuz**snp*")
+    vmlinuz_filepath=$(echo $vmlinuz_filepath| tr -d '\r')
+    ssh_guest_command "sudo cp  $(realpath ${vmlinuz_filepath}) /home/${GUEST_USER}"
+    ssh_guest_command "sudo chmod 644  /home/${GUEST_USER}/$(basename $(realpath ${vmlinuz_filepath}))"
+    scp_guest_command "${GUEST_USER}@localhost:/home/${GUEST_USER}/$(basename $(realpath ${vmlinuz_filepath}))" "${LAUNCH_WORKING_DIR}"
+
     ssh_guest_command "sudo shutdown now" || true
     echo "true" > "${guest_kernel_installed_file}"
 
-    # Update the initrd file path and name in the guest launch source-bins file
-    sed -i -e "s|^\(INITRD_BIN=\).*$|\1\"${LAUNCH_WORKING_DIR}/${guest_initrd_basename}\"|g" "${LAUNCH_WORKING_DIR}/source-bins"
+    # Overwrite the downloaded initrd/initramfs, guest kernel binary file path in host
+    GENERATED_INITRD_BIN=$(ls ${LAUNCH_WORKING_DIR}/*init**snp* )
+    GENERATED_KERNEL_BIN=$(ls ${LAUNCH_WORKING_DIR}/*vmlinuz**snp* )
+
+    # Update the initrd file & kernel file path and name in the guest launch source-bins file
+    sed -i -e "s|^\(INITRD_BIN=\).*$|\1\"${GENERATED_INITRD_BIN}\"|g" "${LAUNCH_WORKING_DIR}/source-bins"
+    sed -i -e "s|^\(KERNEL_BIN=\).*$|\1\"${GENERATED_KERNEL_BIN}\"|g" "${LAUNCH_WORKING_DIR}/source-bins"
 
     # A few seconds for shutdown to complete
     sleep 10
@@ -1013,6 +1068,9 @@ setup_and_launch_guest() {
   #initrd_add_sev_guest_module "${INITRD_BIN}"
 
   add_qemu_cmdline_opts "-machine memory-encryption=sev0,vmport=off"
+
+  # Update guest initial ramdisk to initrd or initramfs and guest kernel to the latest SNP kernel
+  source "${LAUNCH_WORKING_DIR}/source-bins"
 
   if $UPM; then
     add_qemu_cmdline_opts "-object memory-backend-memfd,id=ram1,size=${GUEST_MEM_SIZE_MB}M,share=true,prealloc=false"
