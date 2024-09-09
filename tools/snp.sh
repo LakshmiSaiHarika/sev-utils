@@ -84,7 +84,6 @@ CPU_MODEL="${CPU_MODEL:-EPYC-v4}"
 GUEST_USER="${GUEST_USER:-amd}"
 GUEST_PASS="${GUEST_PASS:-amd}"
 GUEST_SSH_KEY_PATH="${GUEST_SSH_KEY_PATH:-${LAUNCH_WORKING_DIR}/${GUEST_NAME}-key}"
-GUEST_ROOT_LABEL="${GUEST_ROOT_LABEL:-cloudimg-rootfs}"
 GUEST_KERNEL_APPEND="root=LABEL=${GUEST_ROOT_LABEL} ro console=ttyS0"
 QEMU_CMDLINE_FILE="${QEMU_CMDLINE:-${LAUNCH_WORKING_DIR}/qemu.cmdline}"
 IMAGE="${IMAGE:-${LAUNCH_WORKING_DIR}/${GUEST_NAME}.img}"
@@ -706,6 +705,22 @@ build_guest_initrd() {
     --add-drivers "sev-guest"
 }
 
+set_guest_kernel_append() {
+  # Linux Distribution specific installation
+  case ${LINUX_TYPE} in
+    ubuntu)
+      GUEST_ROOT_LABEL="${GUEST_ROOT_LABEL:-cloudimg-rootfs}"
+      GUEST_KERNEL_APPEND="root=LABEL=${GUEST_ROOT_LABEL} ro console=ttyS0"
+      ;;
+    rhel)
+      GUEST_ROOT_LABEL="${GUEST_ROOT_LABEL:-root}"
+      GUEST_KERNEL_APPEND="root=LABEL=${GUEST_ROOT_LABEL} ro console=ttyS0"
+      ;;
+    fedora)
+      GUEST_ROOT_LABEL="${GUEST_ROOT_LABEL:-fedora}"
+      GUEST_KERNEL_APPEND="console=ttyS0 root=LABEL=${GUEST_ROOT_LABEL} ro rootflags=subvol=root"
+  esac
+}
 # Retrieve SNP guest kernel from the guest kernel config file via guest kernel version & kernel hash parameters
 get_guest_kernel_version() {
   local guest_kernel_config="${SETUP_WORKING_DIR}/AMDSEV/linux/guest/.config"
@@ -993,6 +1008,7 @@ setup_and_launch_guest() {
   add_qemu_cmdline_opts "-bios ${OVMF_BIN}"
   add_qemu_cmdline_opts "-initrd ${INITRD_BIN}"
   add_qemu_cmdline_opts "-kernel ${KERNEL_BIN}"
+  set_guest_kernel_append
   add_qemu_cmdline_opts "-append \"${GUEST_KERNEL_APPEND}\""
 
   # Launch qemu cmdline
