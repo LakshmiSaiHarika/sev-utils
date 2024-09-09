@@ -307,6 +307,7 @@ ubuntu_install_dependencies() {
 
   # cloud-utils dependency
   sudo apt install -y cloud-image-utils
+  sudo apt install -y genisoimage
 
   # Virtualization tools for resizing image
   # virt-resize currently does not work with cloud-init images. It changes the partition 
@@ -394,6 +395,7 @@ rhel_install_dependencies() {
 
   # cloud-utils dependency
   sudo dnf install -y cloud-init
+  sudo dnf install -y xorriso
 
   # sev-snp-measure
   sudo dnf install -y python3-pip
@@ -431,6 +433,7 @@ fedora_install_dependencies() {
 
   # cloud-utils dependency
   sudo dnf install -y cloud-init
+  sudo dnf install -y genisoimage
 }
 
 # Retrieve SNP host kernel from the host kernel config file via host kernel version & kernel hash parameters
@@ -531,24 +534,40 @@ generate_guest_ssh_keypair() {
   ssh-keygen -q -t ed25519 -N '' -f "${GUEST_SSH_KEY_PATH}" <<<y
 }
 
+download_cloud_init_image(){
+
+  # Set Cloud init URL based on the OS type
+  case ${LINUX_TYPE} in
+    ubuntu)
+      CLOUD_INIT_IMAGE_URL="https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
+      ;;
+    fedora)
+      CLOUD_INIT_IMAGE_URL="https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/38/Cloud/x86_64/images/Fedora-Cloud-Base-38-1.6.x86_64.qcow2"
+      ;;
+  esac
+
+  wget "${CLOUD_INIT_IMAGE_URL}" -O "${IMAGE}"
+}
+
 cloud_init_create_data() {
-  if [[ -f "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-metadata.yaml" && \
-    -f "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-user-data.yaml"  && \
+  if [[ -f "${LAUNCH_WORKING_DIR}/${GUEST_NAME}/meta-data" && \
+    -f "${LAUNCH_WORKING_DIR}/${GUEST_NAME}/user-data"  && \
     -f "${IMAGE}" ]]; then
     echo -e "cloud-init data already generated"
     return 0
   fi
 
+
   local pub_key=$(cat "${GUEST_SSH_KEY_PATH}.pub")
 
 # Seed image metadata
-cat > "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-metadata.yaml" <<EOF
+cat > "${LAUNCH_WORKING_DIR}/${GUEST_NAME}/meta-data" <<EOF
 instance-id: "${GUEST_NAME}"
 local-hostname: "${GUEST_NAME}"
 EOF
 
 # Seed image user data
-cat > "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-user-data.yaml" <<EOF
+cat > "${LAUNCH_WORKING_DIR}/${GUEST_NAME}/user-data" <<EOF
 #cloud-config
 chpasswd:
   expire: false
@@ -564,13 +583,11 @@ users:
       - ${pub_key}
 EOF
 
-  # Create the seed image with metadata and user data
-  cloud-localds "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-seed.img" \
-    "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-user-data.yaml" \
-    "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-metadata.yaml"
+  # to create an ISO image that includes user-data and meta-data
+    genisoimage -output "${LAUNCH_WORKING_DIR}/${GUEST_NAME}/ciiso.iso" -volid cidata -joliet -rock "${LAUNCH_WORKING_DIR}/${GUEST_NAME}/user-data" "${LAUNCH_WORKING_DIR}/${GUEST_NAME}/meta-data"
 
-  # Download ubuntu 20.04 and change name
-  wget "${CLOUD_INIT_IMAGE_URL}" -O "${IMAGE}"
+  # Download Guest Image from cloud init URL
+  download_cloud_init_image
 }
 
 resize_guest() {
@@ -954,7 +971,7 @@ setup_and_launch_guest() {
 
     # Add seed image option to qemu cmdline
     add_qemu_cmdline_opts "-device scsi-hd,drive=disk1"
-    add_qemu_cmdline_opts "-drive if=none,id=disk1,format=raw,file=${LAUNCH_WORKING_DIR}/${GUEST_NAME}-seed.img"
+    add_qemu_cmdline_opts "-drive if=none,id=disk1,format=raw,file=${LAUNCH_WORKING_DIR}/${GUEST_NAME}/ciiso.iso"
   fi
 
   local guest_kernel_installed_file="${LAUNCH_WORKING_DIR}/guest_kernel_already_installed"
