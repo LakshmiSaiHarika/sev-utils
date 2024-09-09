@@ -775,6 +775,8 @@ copy_launch_binaries() {
 
   # Create directory
   mkdir -p "${LAUNCH_WORKING_DIR}"
+  # Create separate Guest directory
+  mkdir -p "${LAUNCH_WORKING_DIR}/${GUEST_NAME}"
 
   # Copy the setup generated bins to the guest launch directory
   # initrd is copied after the first guest boot and is scp-ed off
@@ -953,6 +955,11 @@ setup_and_launch_guest() {
   # recreated by above commands
   # Give kvm group rw access to /dev/sev
   sudo setfacl -m g:kvm:rw /dev/sev
+
+  # Create directory
+  mkdir -p "${LAUNCH_WORKING_DIR}"g
+  # Create separate Guest directory
+  mkdir -p "${LAUNCH_WORKING_DIR}/${GUEST_NAME}"
 
   # Build base qemu cmdline and add direct boot bins
   build_base_qemu_cmdline "${QEMU_BIN}"
