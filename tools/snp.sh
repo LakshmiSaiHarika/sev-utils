@@ -268,6 +268,7 @@ install_dependencies() {
 
   # pip needed for sev-snp-measure
   sudo apt install -y python3-pip
+  pip install tomli
   
   echo "true" > "${dependencies_installed_file}"
 }
