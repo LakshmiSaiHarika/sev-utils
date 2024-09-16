@@ -265,6 +265,44 @@ ubuntu_install_dependencies() {
   pip install tomli
 }
 
+rhel_install_dependencies() {
+  # Build dependencies
+  sudo dnf install -y wget curl
+  sudo dnf install -y git
+
+  # # Enable RedHat Repository for ninja-build qemu dependency
+  sudo subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms
+
+  # qemu dependencies
+  sudo dnf install -y gcc
+  sudo dnf install -y ninja-build
+  sudo dnf install -y bzip2
+  sudo dnf install -y glib2-devel
+
+  # ovmf dependencies
+  sudo dnf install -y  gcc-c++
+  sudo dnf install -y libuuid-devel
+  sudo dnf install -y iasl
+  install_nasm_from_source
+
+  # kernel dependencies
+  sudo dnf install -y bison
+  sudo dnf install -y flex
+  sudo dnf install -y kernel-devel
+  sudo dnf install -y bc
+  sudo dnf install -y rpm-build
+  sudo dnf install -y dwarves perl
+
+  # cloud-utils dependency
+  sudo dnf install -y cloud-init
+
+  # sev-snp-measure
+  sudo dnf install -y python3-pip
+
+  # Needed to build 6.11.0-rc3 SNP kernel on the host
+  pip install tomli
+}
+
 identify_linux_distribution_type(){
   [ -e /etc/os-release ] && . /etc/os-release
 
@@ -272,6 +310,9 @@ identify_linux_distribution_type(){
     ubuntu | debian)
       LINUX_TYPE='ubuntu'
       break
+      ;;
+    rhel)
+      LINUX_TYPE='rhel'
       ;;
   esac
 }
@@ -290,6 +331,10 @@ install_dependencies(){
   case ${LINUX_TYPE} in
     ubuntu)
       ubuntu_install_dependencies
+      break
+      ;;
+    rhel)
+      rhel_install_dependencies
       break
       ;;
     *)
