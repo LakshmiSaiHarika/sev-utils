@@ -214,15 +214,7 @@ install_sev_snp_measure() {
   pip install sev-snp-measure==${SEV_SNP_MEASURE_VERSION}
 }
 
-install_dependencies() {
-  local dependencies_installed_file="${WORKING_DIR}/dependencies_already_installed"
-  source "${HOME}/.cargo/env" 2>/dev/null || true
-
-  if [ -f "${dependencies_installed_file}" ]; then
-    echo -e "Dependencies previously installed"
-    return 0
-  fi
-
+ubuntu_install_dependencies() {
   # Build dependencies
   sudo apt install -y build-essential git
 
@@ -274,7 +266,41 @@ install_dependencies() {
 
   # Needed to build 6.11.0-rc3 SNP kernel on the host
   pip install tomli
-  
+}
+
+identify_linux_distribution_type(){
+  [ -e /etc/os-release ] && . /etc/os-release
+
+  case ${ID,,} in
+    ubuntu | debian)
+      LINUX_TYPE='ubuntu'
+      break
+      ;;
+  esac
+}
+
+install_dependencies(){
+  identify_linux_distribution_type
+  local dependencies_installed_file="${WORKING_DIR}/dependencies_already_installed"
+  source "${HOME}/.cargo/env" 2>/dev/null || true
+
+  if [ -f "${dependencies_installed_file}" ]; then
+    echo -e "Dependencies previously installed"
+    return 0
+  fi
+
+  # Linux Distribution specific installation
+  case ${LINUX_TYPE} in
+    ubuntu)
+      ubuntu_install_dependencies
+      break
+      ;;
+    *)
+      echo "Error: Failed to install dependencies on unknown linux distribution"
+      return 1
+      ;;
+  esac
+
   echo "true" > "${dependencies_installed_file}"
 }
 
