@@ -355,7 +355,7 @@ get_host_kernel_version() {
   echo "${host_kernel}"
 }
 
-set_grub_default_snp() {
+ubuntu_set_grub_default_snp() {
   # Get the path to host kernel and the version for setting grub default
   local host_kernel_version=$(get_host_kernel_version)
 
@@ -386,6 +386,21 @@ set_grub_default_snp() {
   sudo sed -i -e "s|^\(GRUB_DEFAULT=\).*$|\1\"${snp_submenu_name}>${snp_menuitem_name}\"|g" "/etc/default/grub"
   
   sudo update-grub
+}
+
+set_grub_default_snp() {
+  identify_linux_distribution_type
+
+  case ${LINUX_TYPE} in
+    ubuntu)
+      ubuntu_set_grub_default_snp
+      break
+      ;;
+    *)
+      echo "Error: Can't set/modify default grub menu for unknown linux distribution"
+      return 1
+      ;;
+  esac
 }
 
 generate_guest_ssh_keypair() {
