@@ -388,12 +388,37 @@ ubuntu_set_grub_default_snp() {
   sudo update-grub
 }
 
+rhel_set_grub_default_snp(){
+  # Get the SNP host latest version from snp host kernel config
+  local snp_host_kernel_version=$(get_host_kernel_version)
+
+  # Retrieve snp menuitem name from grub.cfg
+  local snp_menuitem_name=$(sudo cat /boot/grub2/grub.cfg \
+    | grep "menuentry.*${snp_host_kernel_version}" \
+    | grep -v "(recovery mode)" \
+    | grep -o -P "(?<=').*" \
+    | grep -o -P "^[^']*")
+
+  # Create default grub backup
+  sudo cp /etc/default/grub /etc/default/grub_bkup
+
+  # Replace grub default with snp menuitem name
+  sudo sed -i -e "s|^\(GRUB_DEFAULT=\).*$|\1\"${snp_menuitem_name}\"|g" "/etc/default/grub"
+
+  # Regenerate GRUB configuration for UEFI based machine or BIOS based machine
+  [ -d /sys/firmware/efi ] && sudo grub2-mkconfig -o /boot/efi/EFI/redhat/grub.cfg || sudo grub2-mkconfig -o /boot/grub2/grub.cfg
+}
+
 set_grub_default_snp() {
   identify_linux_distribution_type
 
   case ${LINUX_TYPE} in
     ubuntu)
       ubuntu_set_grub_default_snp
+      break
+      ;;
+    rhel)
+      rhel_set_grub_default_snp
       break
       ;;
     *)
