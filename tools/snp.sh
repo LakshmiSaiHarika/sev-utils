@@ -91,8 +91,8 @@ IMAGE="${IMAGE:-${LAUNCH_WORKING_DIR}/${GUEST_NAME}.img}"
 GENERATED_INITRD_BIN="${SETUP_WORKING_DIR}/initrd.img"
 
 # URLs and repos
-AMDSEV_URL="https://github.com/ryansavino/AMDSEV.git"
-AMDSEV_DEFAULT_BRANCH="snp-latest-fixes"
+AMDSEV_URL="https://github.com/LakshmiSaiHarika/AMDSEV.git"
+AMDSEV_DEFAULT_BRANCH="rhel-setup-host"
 AMDSEV_NON_UPM_BRANCH="snp-non-upm"
 SNPGUEST_URL="https://github.com/virtee/snpguest.git"
 SNPGUEST_BRANCH="tags/v0.7.1"
