@@ -179,6 +179,30 @@ verify_platform_snp_bit_status() {
 
   fi
 
+  if [ "$1" == "guest" ]; then
+    if [ ! -f "${GUEST_SSH_KEY_PATH}" ]; then
+      >&2 echo -e "Guest SSH key not present [${GUEST_SSH_KEY_PATH}], so cannot verify guest SNP enabled"
+      return 1
+    fi
+
+    # Install guest rdmsr package dependencies to insert & insert guest msr module
+    ssh_guest_command "sudo DEBIAN_FRONTEND=noninteractive sudo apt install -y msr-tools > /dev/null 2>&1" > /dev/null 2>&1
+    ssh_guest_command "sudo modprobe msr" > /dev/null 2>&1
+
+    # Read the guest (MSR_AMD64_SEV) value
+    local guest_msr_read
+    guest_msr_read=$(ssh_guest_command "sudo rdmsr -p 0 0xc0010131")
+    guest_msr_read=$(echo "${guest_msr_read}" | tr -d '\r' | bc)
+
+    # Map all the sev features in a single associative array for all guest SEV features
+    declare -A actual_sev_snp_bit_status=(
+      [SEV]=$(( ( ${guest_msr_read} >> 0) & 1))
+      [SEV-ES]=$(( (${guest_msr_read} >> 1) & 1))
+      [SNP]=$(( (${guest_msr_read} >> 2) & 1))
+    )
+
+  fi
+
   # Checks for the presence of all the security feature support in the platform
   local sev_snp_error
   sev_snp_error=""
@@ -190,6 +214,11 @@ verify_platform_snp_bit_status() {
           sev_snp_error+=$(echo "$sev_snp_key support is not found on the host.\n");
           sev_snp_error+=$(echo "Swap of a processor that supports $sev_snp_key feature is required. \n");
           sev_snp_error+=$(echo "$sev_snp_key current bit value is: ${actual_sev_snp_bit_status[$sev_snp_key]} .\n")
+        fi
+        # Capture the guest SEV/SNP bit value mismatch
+        if [ "$1" == "guest" ]; then
+          sev_snp_error+=$(echo "$sev_snp_key feature is not active on the guest.\n");
+          sev_snp_error+=$(echo "$sev_snp_key current bit value is: ${actual_sev_snp_bit_status[$sev_snp_key]} .\n");
         fi
       fi
   done
@@ -1265,7 +1294,11 @@ main() {
       sudo modprobe kvm_amd debug_swap=0
 
       setup_and_launch_guest
-      wait_and_retry_command verify_snp_guest
+      # Use of MSR checks over dmesg output for the SNP status check on guest
+      # wait_and_retry_command verify_snp_guest
+
+      # SNP test on guest via MSR check
+      wait_and_retry_command verify_platform_snp_bit_status guest
 
       echo -e "Guest SSH port forwarded to host port: ${HOST_SSH_PORT}"
       echo -e "The guest is running in the background. Use the following command to access via SSH:"
@@ -1276,7 +1309,11 @@ main() {
       install_rust
       install_sev_snp_measure
       install_dependencies
-      wait_and_retry_command verify_snp_guest
+      # Use of MSR checks over dmesg output for the SNP status check on guest
+      # wait_and_retry_command verify_snp_guest
+
+      # SNP test on guest via MSR check
+      wait_and_retry_command verify_platform_snp_bit_status guest
       setup_guest_attestation
       attest_guest
       ;;
