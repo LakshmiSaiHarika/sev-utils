@@ -118,6 +118,7 @@ usage() {
   >&2 echo "    stop-guests           Stop all SNP guests started by this script"
   >&2 echo "  where OPTIONS are:"
   >&2 echo "    -n|--non-upm          Build AMDSEV non UPM kernel (sev-snp-devel)"
+  >&2 echo "    -k_t|--kernel-tag     Build AMDSEV kernel with the desired kernel version"
   >&2 echo "    -i|--image            Path to existing image file"
   >&2 echo "    -h|--help             Usage information"
 
@@ -904,6 +905,12 @@ build_and_install_amdsev() {
   # Delete the ovmf/ directory prior to the build step for ovmf re-initialization
   [ ! -d "ovmf" ] || rm -rf "ovmf"
 
+  # Set SNP kernel default branch to the  kernel tagged input version
+  if [[ ! -z "${KERNEL_HOST_GUEST_BRANCH_TAG}" ]]; then
+    sed -i -e "s|^\(KERNEL_HOST_BRANCH=\).*$|\1\"tags/${KERNEL_HOST_GUEST_BRANCH_TAG}\"|g" "${SETUP_WORKING_DIR}/AMDSEV/stable-commits"
+    sed -i -e "s|^\(KERNEL_GUEST_BRANCH=\).*$|\1\"tags/${KERNEL_HOST_GUEST_BRANCH_TAG}\"|g" "${SETUP_WORKING_DIR}/AMDSEV/stable-commits"
+  fi
+
   # Build and copy files
   ./build.sh --package
   sudo cp kvm.conf /etc/modprobe.d/
@@ -1368,6 +1375,11 @@ main() {
       -i|--image)
         IMAGE="${2}"
         SKIP_IMAGE_CREATE=true
+        shift; shift
+        ;;
+
+      -k_t|--kernel-tag)
+        KERNEL_HOST_GUEST_BRANCH_TAG="${2}"
         shift; shift
         ;;
 
