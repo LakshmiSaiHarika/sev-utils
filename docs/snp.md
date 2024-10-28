@@ -58,8 +58,15 @@ Setup the host by building SNP patched versions of qemu, ovmf and the linux kern
 ./snp.sh setup-host
 ```
 
+The `--kernel-tag` option with particular kernel tag version can be specified with the setup-host command if a specific SNP host kernel version is desired, for example,as follows:
+
+```
+./snp.sh --kernel-tag "v6.10" setup-host
+```
+
 The `--non-upm` option can be specified with the above command if a non-upm version 
 of the kernel is desired.
+
 
 The above step will also change the default grub entry to the newly installed 
 host kernel.
