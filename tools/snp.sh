@@ -483,26 +483,37 @@ rhel_fedora_grub_default_snp(){
   # Get the SNP host latest version from snp host kernel config
   local snp_host_kernel_version=$(get_host_kernel_version)
 
-  # Retrieve snp menuitem name from grub.cfg
-  local snp_menuitem_name=$(sudo cat /boot/grub2/grub.cfg \
-    | grep "menuentry.*${snp_host_kernel_version}" \
-    | grep -v "(recovery mode)" \
-    | grep -o -P "(?<=').*" \
-    | grep -o -P "^[^']*")
-
-  # Create default grub backup
-  sudo cp /etc/default/grub /etc/default/grub_bkup
-
-  # Replace grub default with snp menuitem name
-  sudo sed -i -e "s|^\(GRUB_DEFAULT=\).*$|\1\"${snp_menuitem_name}\"|g" "/etc/default/grub"
-
-  # Regenerate GRUB configuration for UEFI based machine or BIOS based machine
   case ${LINUX_TYPE} in
     rhel)
+      # Retrieve snp menuitem name from grub.cfg
+      local snp_menuitem_name=$(sudo cat /boot/grub2/grub.cfg \
+        | grep "menuentry.*${snp_host_kernel_version}" \
+        | grep -v "(recovery mode)" \
+        | grep -o -P "(?<=').*" \
+        | grep -o -P "^[^']*")
+
+      # Create default grub backup
+      sudo cp /etc/default/grub /etc/default/grub_bkup
+
+      # Replace grub default with snp menuitem name
+      sudo sed -i -e "s|^\(GRUB_DEFAULT=\).*$|\1\"${snp_menuitem_name}\"|g" "/etc/default/grub"
+
+      # Regenerate GRUB configuration for RHEL UEFI based machine or BIOS based machine
       [ -d /sys/firmware/efi ] && sudo grub2-mkconfig -o /boot/efi/EFI/redhat/grub.cfg || sudo grub2-mkconfig -o /boot/grub2/grub.cfg
       ;;
 
     fedora)
+      # Retrieve snp menuitem name from the boot loader entries
+      local snp_menuitem_name=$(sudo sh -c 'grep title /boot/loader/entries/* | cut -d " " -f2-' \
+        | grep "Fedora Linux.*${snp_host_kernel_version}")
+
+      # Create default grub backup
+      sudo cp /etc/default/grub /etc/default/grub_bkup
+
+      # Replace grub default with snp menuitem name
+      sudo sed -i -e "s|^\(GRUB_DEFAULT=\).*$|\1\"${snp_menuitem_name}\"|g" "/etc/default/grub"
+
+      # Regenerate GRUB configuration for fedora UEFI based machine or BIOS based machine
       [ -d /sys/firmware/efi ] && sudo grub2-mkconfig -o /boot/efi/EFI/fedora/grub.cfg || sudo grub2-mkconfig -o /boot/grub2/grub.cfg
   esac
 }
