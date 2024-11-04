@@ -923,6 +923,7 @@ build_and_install_amdsev() {
   fi
 
   # Build and copy files
+  git config --global url.https://github.com/Dasharo/subhook.insteadOf https://github.com/Zeex/subhook.git
   ./build.sh --package
   sudo cp kvm.conf /etc/modprobe.d/
   
