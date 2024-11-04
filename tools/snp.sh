@@ -914,7 +914,7 @@ build_and_install_amdsev() {
 
   # Based on latest AMDSEV documentation
   # Delete the ovmf/ directory prior to the build step for ovmf re-initialization
-  [ ! -d "ovmf" ] || rm -rf "ovmf"
+  # [ ! -d "ovmf" ] || rm -rf "ovmf"
 
   # Set SNP kernel default branch to the  kernel tagged input version
   if [[ ! -z "${KERNEL_HOST_GUEST_BRANCH_TAG}" ]]; then
