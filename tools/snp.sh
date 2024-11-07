@@ -68,7 +68,8 @@ trap cleanup EXIT
 # Working directory setup
 WORKING_DIR="${WORKING_DIR:-$HOME/snp}"
 SETUP_WORKING_DIR="${SETUP_WORKING_DIR:-${WORKING_DIR}/setup}"
-LAUNCH_WORKING_DIR="${LAUNCH_WORKING_DIR:-${WORKING_DIR}/launch}"
+GUEST_NAME="${GUEST_NAME:-snp-guest}"
+LAUNCH_WORKING_DIR="${LAUNCH_WORKING_DIR:-${WORKING_DIR}/launch/${GUEST_NAME}}"
 ATTESTATION_WORKING_DIR="${ATTESTATION_WORKING_DIR:-${WORKING_DIR}/attest}"
 
 # Export environment variables
@@ -76,7 +77,6 @@ COMMAND="help"
 UPM=true
 SKIP_IMAGE_CREATE=false
 HOST_SSH_PORT="${HOST_SSH_PORT:-10022}"
-GUEST_NAME="${GUEST_NAME:-snp-guest}"
 GUEST_SIZE_GB="${GUEST_SIZE_GB:-20}"
 GUEST_MEM_SIZE_MB="${GUEST_MEM_SIZE_MB:-2048}"
 GUEST_SMP="${GUEST_SMP:-4}"
@@ -562,8 +562,8 @@ download_cloud_init_image(){
 }
 
 cloud_init_create_data() {
-  if [[ -f "${LAUNCH_WORKING_DIR}/${GUEST_NAME}/meta-data" && \
-    -f "${LAUNCH_WORKING_DIR}/${GUEST_NAME}/user-data"  && \
+  if [[ -f "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-data/meta-data" && \
+    -f "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-data/user-data"  && \
     -f "${IMAGE}" ]]; then
     echo -e "cloud-init data already generated"
     return 0
@@ -573,13 +573,13 @@ cloud_init_create_data() {
   local pub_key=$(cat "${GUEST_SSH_KEY_PATH}.pub")
 
 # Seed image metadata
-cat > "${LAUNCH_WORKING_DIR}/${GUEST_NAME}/meta-data" <<EOF
+cat > "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-data/meta-data" <<EOF
 instance-id: "${GUEST_NAME}"
 local-hostname: "${GUEST_NAME}"
 EOF
 
 # Seed image user data
-cat > "${LAUNCH_WORKING_DIR}/${GUEST_NAME}/user-data" <<EOF
+cat > "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-data/user-data" <<EOF
 #cloud-config
 chpasswd:
   expire: false
@@ -596,7 +596,7 @@ users:
 EOF
 
   # to create an ISO image that includes user-data and meta-data
-    genisoimage -output "${LAUNCH_WORKING_DIR}/${GUEST_NAME}/ciiso.iso" -volid cidata -joliet -rock "${LAUNCH_WORKING_DIR}/${GUEST_NAME}/user-data" "${LAUNCH_WORKING_DIR}/${GUEST_NAME}/meta-data"
+    genisoimage -output "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-data/ciiso.iso" -volid cidata -joliet -rock "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-data/user-data" "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-data/meta-data"
 
   # Download Guest Image from cloud init URL
   download_cloud_init_image
@@ -788,7 +788,7 @@ copy_launch_binaries() {
   # Create directory
   mkdir -p "${LAUNCH_WORKING_DIR}"
   # Create separate Guest directory
-  mkdir -p "${LAUNCH_WORKING_DIR}/${GUEST_NAME}"
+  mkdir -p "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-data"
 
   # Copy the setup generated bins to the guest launch directory
   # initrd is copied after the first guest boot and is scp-ed off
@@ -1000,10 +1000,10 @@ setup_and_launch_guest() {
   # Give kvm group rw access to /dev/sev
   sudo setfacl -m g:kvm:rw /dev/sev
 
-  # Create directory
-  mkdir -p "${LAUNCH_WORKING_DIR}"g
-  # Create separate Guest directory
-  mkdir -p "${LAUNCH_WORKING_DIR}/${GUEST_NAME}"
+  # Create a launch directory
+  mkdir -p "${LAUNCH_WORKING_DIR}"
+  # Create separate Guest data directory
+  mkdir -p "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-data"
 
   # Build base qemu cmdline and add direct boot bins
   build_base_qemu_cmdline "${QEMU_BIN}"
@@ -1022,7 +1022,7 @@ setup_and_launch_guest() {
 
     # Add seed image option to qemu cmdline
     add_qemu_cmdline_opts "-device scsi-hd,drive=disk1"
-    add_qemu_cmdline_opts "-drive if=none,id=disk1,format=raw,file=${LAUNCH_WORKING_DIR}/${GUEST_NAME}/ciiso.iso"
+    add_qemu_cmdline_opts "-drive if=none,id=disk1,format=raw,file=${LAUNCH_WORKING_DIR}/${GUEST_NAME}-data/ciiso.iso"
   fi
 
   local guest_kernel_installed_file="${LAUNCH_WORKING_DIR}/guest_kernel_already_installed"
@@ -1469,15 +1469,15 @@ main() {
 
       # TEMPORARY until sev-snp-measure is updated to pass in TCB kernel modifier flags
       # Changes in AMDESE/linux set debug_swap on by default and affect the measurement
-      sudo modprobe -r kvm_amd
-      sudo modprobe kvm_amd debug_swap=0
+      # sudo modprobe -r kvm_amd
+      # sudo modprobe kvm_amd debug_swap=0
 
       setup_and_launch_guest
       wait_and_retry_command verify_snp_guest
 
       echo -e "Guest SSH port forwarded to host port: ${HOST_SSH_PORT}"
       echo -e "The guest is running in the background. Use the following command to access via SSH:"
-      echo -e "ssh -p ${HOST_SSH_PORT} -i ${LAUNCH_WORKING_DIR}/snp-guest-key amd@localhost"
+      echo -e "ssh -p ${HOST_SSH_PORT} -i ${LAUNCH_WORKING_DIR}/${GUEST_NAME}-key amd@localhost"
       ;;
 
     attest-guest)
