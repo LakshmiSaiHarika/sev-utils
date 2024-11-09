@@ -87,6 +87,7 @@ GUEST_SSH_KEY_PATH="${GUEST_SSH_KEY_PATH:-${LAUNCH_WORKING_DIR}/${GUEST_NAME}-ke
 GUEST_KERNEL_APPEND="root=LABEL=${GUEST_ROOT_LABEL} ro console=ttyS0"
 QEMU_CMDLINE_FILE="${QEMU_CMDLINE:-${LAUNCH_WORKING_DIR}/qemu.cmdline}"
 IMAGE="${IMAGE:-${LAUNCH_WORKING_DIR}/${GUEST_NAME}.img}"
+CLOUD_IMAGE="${CLOUD_IMAGE:-${WORKING_DIR}/launch/base_cloud_image.img}"
 GENERATED_INITRD_BIN="${SETUP_WORKING_DIR}/initrd.img"
 
 RHEL_SUBS_MGR_USER="${RHEL_SUBS_MGR_USER}"
@@ -559,6 +560,11 @@ download_cloud_init_image(){
   esac
 
   wget "${CLOUD_INIT_IMAGE_URL}" -O "${IMAGE}"
+  if [ ! -f "${CLOUD_IMAGE}" ]; then
+    wget "${CLOUD_INIT_IMAGE_URL}" -O "${CLOUD_IMAGE}"
+  fi
+
+  cp "${CLOUD_IMAGE}" "${IMAGE}"
 }
 
 cloud_init_create_data() {
