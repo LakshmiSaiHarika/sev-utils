@@ -559,7 +559,6 @@ download_cloud_init_image(){
       ;;
   esac
 
-  wget "${CLOUD_INIT_IMAGE_URL}" -O "${IMAGE}"
   if [ ! -f "${CLOUD_IMAGE}" ]; then
     wget "${CLOUD_INIT_IMAGE_URL}" -O "${CLOUD_IMAGE}"
   fi
