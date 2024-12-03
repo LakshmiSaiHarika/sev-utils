@@ -295,6 +295,7 @@ install_rhel_dependencies() {
 
   # cloud-utils dependency
   sudo dnf install -y cloud-init
+  sudo dnf install -y xorriso
 
   # sev-snp-measure
   sudo dnf install -y python3-pip
@@ -509,6 +510,9 @@ download_guest_os_image(){
   case ${linux_distro} in
     ubuntu)
       CLOUD_INIT_IMAGE_URL="https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
+      ;;
+    rhel)
+      CLOUD_INIT_IMAGE_URL="https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/38/Cloud/x86_64/images/Fedora-Cloud-Base-38-1.6.x86_64.qcow2"
       ;;
   esac
 
