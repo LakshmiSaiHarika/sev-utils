@@ -1113,6 +1113,18 @@ set_default_guest_kernel_append() {
 }
 
 setup_and_launch_guest() {
+
+  local guest_kernel_deb=$(echo "$(realpath ${SETUP_WORKING_DIR}/AMDSEV/linux/linux-image*snp-guest*.deb)" | grep -v dbg)
+
+  # Return error if user specified file that doesn't exist
+  if [ ! -f "${guest_kernel_deb}" ]; then
+    echo -e "\nSNP Guest Kernel debian package doesn't exist in the host"
+    echo -e "Currently running snp-guest-kernel-deb command for the ubuntu SNP guest kernel package"
+    ./snp.sh snp-guest-kernel-deb &
+    pid=$!
+    wait ${pid} && echo "Completed the snp-guest-kernel-deb command step, continuing with the SNP Guest launch process"
+  fi
+
   # Return error if user specified file that doesn't exist
   if [ ! -f "${IMAGE}" ] && ${SKIP_IMAGE_CREATE}; then
     >&2 echo -e "Image file specified, but doesn't exist"
