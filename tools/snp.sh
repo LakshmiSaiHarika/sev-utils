@@ -563,6 +563,10 @@ download_guest_os_image(){
       CLOUD_INIT_IMAGE_URL=${CLOUD_INIT_IMAGE_URL_FEDORA}
       IMAGE_BASENAME=${IMAGE_BASENAME_FEDORA}
       ;;
+    rhel)
+      CLOUD_INIT_IMAGE_URL=${CLOUD_INIT_IMAGE_URL_UBUNTU}
+      IMAGE_BASENAME=${IMAGE_BASENAME_UBUNTU}
+      ;;
     *)
       >&2 echo -e "ERROR: ${linux_distro}"
       return 1
