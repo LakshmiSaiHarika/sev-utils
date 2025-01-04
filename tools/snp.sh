@@ -77,10 +77,14 @@ UPM=true
 SKIP_IMAGE_CREATE=false
 IS_RHEL_IMAGE=false
 HOST_SSH_PORT="${HOST_SSH_PORT:-10022}"
+HOST_SSH_PORT_UBUNTU_GUEST="${HOST_SSH_PORT_UBUNTU_GUEST:-10020}"
 GUEST_NAME="${GUEST_NAME:-snp-guest}"
+UBUNTU_GUEST_NAME="${UBUNTU_GUEST_NAME:-build-snp-kernel-deb}"
 GUEST_SIZE_GB="${GUEST_SIZE_GB:-20}"
 GUEST_MEM_SIZE_MB="${GUEST_MEM_SIZE_MB:-2048}"
+UBUNTU_GUEST_MEM_SIZE_MB="${UBUNTU_GUEST_MEM_SIZE_MB:-6144}"
 GUEST_SMP="${GUEST_SMP:-4}"
+UBUNTU_GUEST_SMP="${UBUNTU_GUEST_SMP:-32}"
 CPU_MODEL="${CPU_MODEL:-EPYC-v4}"
 GUEST_USER="${GUEST_USER:-amd}"
 GUEST_PASS="${GUEST_PASS:-amd}"
@@ -124,6 +128,7 @@ usage() {
   >&2 echo "Usage: $0 [OPTIONS] [COMMAND]"
   >&2 echo "  where COMMAND must be one of the following:"
   >&2 echo "    setup-host            Build required SNP components and set up host"
+  >&2 echo "    snp-guest-kernel-deb  Build debian based SNP guest kernel package on the non-debian host"
   >&2 echo "    launch-guest          Launch a SNP guest"
   >&2 echo "    attest-guest          Use virtee/snpguest and sev-snp-measure to attest a SNP guest"
   >&2 echo "    stop-guests           Stop all SNP guests started by this script"
@@ -153,6 +158,10 @@ cleanup() {
     case "${COMMAND}" in
       setup-host)
         cat ${SETUP_WORKING_DIR}/*.log 2>/dev/null
+      ;;
+
+      snp-guest-kernel-deb)
+        cat ${LAUNCH_WORKING_DIR}/ubuntu-qemu-trace.log 2>/dev/null
       ;;
 
       launch-guest)
@@ -1608,6 +1617,11 @@ main() {
         shift
         ;;
 
+      snp-guest-kernel-deb)
+        COMMAND="snp-guest-kernel-deb"
+        shift
+        ;;
+
       launch-guest)
         COMMAND="launch-guest"
         shift
@@ -1661,6 +1675,22 @@ main() {
       source "${SETUP_WORKING_DIR}/source-bins"
       set_grub_default_snp
       echo -e "\nThe host must be rebooted for changes to take effect"
+      ;;
+    snp-guest-kernel-deb)
+      GUEST_MEM_SIZE_MB="${UBUNTU_GUEST_MEM_SIZE_MB}"
+      GUEST_SMP="${UBUNTU_GUEST_SMP}"
+      GUEST_NAME="${UBUNTU_GUEST_NAME}"
+      HOST_SSH_PORT="${HOST_SSH_PORT_UBUNTU_GUEST}"
+
+      LAUNCH_WORKING_DIR="${WORKING_DIR}/launch/${GUEST_NAME}"
+      GUEST_SSH_KEY_PATH="${LAUNCH_WORKING_DIR}/${GUEST_NAME}-key"
+      QEMU_CMDLINE_FILE="${LAUNCH_WORKING_DIR}/qemu.cmdline"
+      IMAGE="${LAUNCH_WORKING_DIR}/${GUEST_NAME}.img"
+      SEED_IMAGE="${LAUNCH_WORKING_DIR}/${GUEST_NAME}-seed.img"
+
+      copy_launch_binaries
+      source "${LAUNCH_WORKING_DIR}/source-bins"
+      setup_ubuntu_guest_and_build_snp_guest_kernel
       ;;
 
     launch-guest)
