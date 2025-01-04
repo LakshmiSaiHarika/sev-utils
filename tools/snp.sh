@@ -967,6 +967,73 @@ build_and_install_amdsev() {
   save_binary_paths
 }
 
+ubuntu_snp_guest_kernel_dependencies(){
+  sudo apt install -y bc rsync
+  sudo apt install -y flex bison libncurses-dev libssl-dev libelf-dev zstd debhelper
+}
+
+# Builds SNP Guest kernel deb package inside the guest and transfers this deb package into the host
+setup_ubuntu_guest_and_build_snp_guest_kernel(){
+  # Give kvm group rw access to /dev/sev
+  sudo setfacl -m g:kvm:rw /dev/sev
+
+  # Build base qemu cmdline and add direct boot bins
+  build_base_qemu_cmdline "${QEMU_BIN}"
+
+  # If the image file doesn't exist, setup
+  if [ ! -f "${IMAGE}" ]; then
+    generate_guest_ssh_keypair
+    cloud_init_create_data
+
+    # For the cloud-init image, just resize the image
+    qemu-img resize "$IMAGE" "${GUEST_SIZE_GB}G"
+
+    # Add seed image option to qemu cmdline
+    add_qemu_cmdline_opts "-device scsi-hd,drive=disk1"
+    add_qemu_cmdline_opts "-drive if=none,id=disk1,format=raw,file=${SEED_IMAGE}"
+  fi
+
+  # Launches a normal guest
+  "${QEMU_CMDLINE_FILE}"
+
+  echo -e "The ubuntu guest is running in the background. Use the following command to access via SSH:"
+  echo -e "ssh -p ${HOST_SSH_PORT} -i ${GUEST_SSH_KEY_PATH} ${GUEST_USER}@localhost"
+
+  # Install debian SNP guest kernel dependencies
+  local snp_guest_kernel_dependencies_file="${LAUNCH_WORKING_DIR}/ubuntu_snp_guest_kernel_dependencies.sh"
+  declare -f ubuntu_snp_guest_kernel_dependencies > "${snp_guest_kernel_dependencies_file}"
+  wait_and_retry_command "scp_guest_command ${snp_guest_kernel_dependencies_file} ${GUEST_USER}@localhost:/home/${GUEST_USER}"
+  ssh_guest_command "sudo apt-get update" > /dev/null
+  ssh_guest_command "source /home/${GUEST_USER}/$(basename ${snp_guest_kernel_dependencies_file}) && ubuntu_snp_guest_kernel_dependencies" > /dev/null
+
+  # Clones AMDSEV inside the guest
+  ssh_guest_command "[  -d "AMDSEV" ] || git clone -b ${AMDSEV_DEFAULT_BRANCH} ${AMDSEV_URL} AMDSEV"
+
+  local current_repo=$(ssh_guest_command "git -C "AMDSEV" remote -v | grep -i current")
+  current_repo=$(echo ${current_repo} | cut -d " " -f 1)
+
+  ssh_guest_command "[ ! -z ${current_repo} ] || git -C "AMDSEV" remote add current ${AMDSEV_URL}"
+  ssh_guest_command "cd AMDSEV && \
+                    git remote set-url current ${AMDSEV_URL} && \
+                    git fetch current ${AMDSEV_DEFAULT_BRANCH} && \
+                    git checkout ${AMDSEV_DEFAULT_BRANCH}
+                    "
+  # Builds SNP guest kernel debian on the guest in about 20 minutes
+  echo -e "\nBuild of SNP Guest Kernel debian Package on ubuntu guest is in progress..."
+
+  time ssh_guest_command "cd /home/${GUEST_USER}/AMDSEV && \
+                          timeout --preserve-status --foreground 20m \
+                          ./build.sh --package kernel guest > ./snp-guest-kernel-debian-build.log"
+
+  # Transfer SNP Guest kernel deb package into the host(AMDSEV/linux)
+  scp_guest_command "${GUEST_USER}@localhost:/home/${GUEST_USER}/AMDSEV/linux/linux-image*snp-guest*.deb" "${SETUP_WORKING_DIR}/AMDSEV/linux/"
+
+  # Performs the guest cleanup steps
+  rm -rf ${HOME}/snp/launch/${UBUNTU_GUEST_NAME}
+  ssh-keygen -R [localhost]:${HOST_SSH_PORT}
+  stop_guests 2>/dev/null || true
+}
+
 get_package_install_command(){
   local linux_distro=$(get_linux_distro)
 
