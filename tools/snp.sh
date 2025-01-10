@@ -136,8 +136,11 @@ usage() {
   >&2 echo "    -n|--non-upm          Build AMDSEV non UPM kernel (sev-snp-devel)"
   >&2 echo "    -i|--image            Path to existing image file"
   >&2 echo "    -r-i|--rhel-image     Path to existing red hat image file on red hat host"
+  >&2 echo "    -glwd|--guest-dir     Path to guest image launch working directory"
   >&2 echo "    -g-n|--guest-name     Create a separate guest launch working directory"
   >&2 echo "    -g-p|--guest-port     Set guest qemu port for networking"
+  >&2 echo "    -g-k|--guest-key-path Set guest SSH key path to access guest"
+  >&2 echo "    -g-u|--guest-user     Set guest user name of the guest image"
   >&2 echo "    -h|--help             Usage information"
 
   return 1
@@ -535,7 +538,7 @@ create_guest_seed_image(){
         "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-user-data.yaml" \
         "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-metadata.yaml"
       ;;
-    fedora)
+    fedora | rhel)
       mv -v "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-user-data.yaml" "${LAUNCH_WORKING_DIR}/user-data"
       mv -v "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-metadata.yaml" "${LAUNCH_WORKING_DIR}/meta-data"
       SEED_IMAGE="${LAUNCH_WORKING_DIR}/ciiso.iso"
@@ -789,6 +792,12 @@ KERNEL_BIN="${guest_kernel}"
 EOF
 }
 
+guest_lauch_pre_cleanup() {
+  local guest_kernel_installed_file="${LAUNCH_WORKING_DIR}/guest_kernel_already_installed"
+  rm -rf "${guest_kernel_installed_file}"
+  rm -rf "${LAUNCH_WORKING_DIR}/source-bins"
+}
+
 copy_launch_binaries() {
   # Source the bins generated from setup
   source "${SETUP_WORKING_DIR}/source-bins"
@@ -991,7 +1000,7 @@ setup_ubuntu_guest_and_build_snp_guest_kernel(){
 
     # Add seed image option to qemu cmdline
     add_qemu_cmdline_opts "-device scsi-hd,drive=disk1"
-    add_qemu_cmdline_opts "-drive if=none,id=disk1,format=raw,file=${LAUNCH_WORKING_DIR}/${GUEST_NAME}-seed.img"
+    add_qemu_cmdline_opts "-drive if=none,id=disk1,format=raw,file=${SEED_IMAGE}"
   fi
 
   # Launches a normal guest
@@ -1004,6 +1013,7 @@ setup_ubuntu_guest_and_build_snp_guest_kernel(){
   local snp_guest_kernel_dependencies_file="${LAUNCH_WORKING_DIR}/ubuntu_snp_guest_kernel_dependencies.sh"
   declare -f ubuntu_snp_guest_kernel_dependencies > "${snp_guest_kernel_dependencies_file}"
   wait_and_retry_command "scp_guest_command ${snp_guest_kernel_dependencies_file} ${GUEST_USER}@localhost:/home/${GUEST_USER}"
+  ssh_guest_command "sudo apt-get update" > /dev/null
   ssh_guest_command "source /home/${GUEST_USER}/$(basename ${snp_guest_kernel_dependencies_file}) && ubuntu_snp_guest_kernel_dependencies" > /dev/null
 
   # Clones AMDSEV inside the guest
@@ -1045,16 +1055,35 @@ get_package_install_command(){
       echo "dnf install -y"
       ;;
     rhel)
-      if [ ${IS_RHEL_IMAGE} ]; then
+      if [ ${IS_RHEL_IMAGE} = "true" ]; then
         echo "dnf install -y"
         return
       fi
+
+      echo "dpkg -i"
       ;;
     *)
       >&2 echo -e "ERROR: ${linux_distro}"
       return 1
       ;;
   esac
+}
+
+build_snp_guest_kernel_debian() {
+  echo "build snp guest kernel debian"
+  local linux_distro=$(get_linux_distro)
+  local guest_kernel_deb=$(echo "$(realpath ${SETUP_WORKING_DIR}/AMDSEV/linux/linux-image*snp-guest*.deb)" | grep -v dbg)
+
+  # Return error if user specified file that doesn't exist
+  if [ "${linux_distro}" = "rhel" ] && [ "${IS_RHEL_IMAGE}" = "false" ]; then
+    if [ ! -f "${guest_kernel_deb}" ]; then
+      echo -e "\nSNP Guest Kernel debian package doesn't exist in the host"
+      echo -e "Currently running snp-guest-kernel-deb command for the ubuntu SNP guest kernel package"
+      ./snp.sh snp-guest-kernel-deb &
+      pid=$!
+      wait ${pid} && echo "Completed the snp-guest-kernel-deb command step, continuing with the SNP Guest launch process"
+    fi
+  fi
 }
 
 get_guest_kernel_package(){
@@ -1071,11 +1100,13 @@ get_guest_kernel_package(){
           echo $(realpath $(ls -t kernel-*${guest_kernel_version}*.rpm| grep -v header| head -1))
         ;;
       rhel)
-        if [ ${IS_RHEL_IMAGE} ]; then
+        if [ "${IS_RHEL_IMAGE}" = "true" ]; then
           guest_kernel_version="${guest_kernel_version//-/_}" # SNP kernel RPM package name contains _ in the version
           echo $(realpath $(ls -t kernel-*${guest_kernel_version}*.rpm| grep -v header| head -1))
           return
         fi
+
+        echo "$(realpath ${SETUP_WORKING_DIR}/AMDSEV/linux/linux-image*snp-guest*.deb)" | grep -v dbg
         ;;
       *)
         >&2 echo -e "ERROR: ${linux_distro}"
@@ -1099,11 +1130,15 @@ set_default_guest_kernel_append() {
       GUEST_KERNEL_APPEND="${GUEST_KERNEL_APPEND_FEDORA}"
       ;;
     rhel)
-      if [ ${IS_RHEL_IMAGE} ]; then
+      if [ ${IS_RHEL_IMAGE} = "true" ]; then
         GUEST_ROOT_LABEL="${GUEST_ROOT_LABEL_RHEL}"
         GUEST_KERNEL_APPEND="${GUEST_KERNEL_APPEND_RHEL}"
         return
       fi
+
+      # Guest root label points to ubuntu SNP guest image
+      GUEST_ROOT_LABEL="${GUEST_ROOT_LABEL_UBUNTU}"
+      GUEST_KERNEL_APPEND="${GUEST_KERNEL_APPEND_UBUNTU}"
       ;;
     *)
       >&2 echo -e "ERROR: ${linux_distro}"
@@ -1113,17 +1148,6 @@ set_default_guest_kernel_append() {
 }
 
 setup_and_launch_guest() {
-
-  local guest_kernel_deb=$(echo "$(realpath ${SETUP_WORKING_DIR}/AMDSEV/linux/linux-image*snp-guest*.deb)" | grep -v dbg)
-
-  # Return error if user specified file that doesn't exist
-  if [ ! -f "${guest_kernel_deb}" ]; then
-    echo -e "\nSNP Guest Kernel debian package doesn't exist in the host"
-    echo -e "Currently running snp-guest-kernel-deb command for the ubuntu SNP guest kernel package"
-    ./snp.sh snp-guest-kernel-deb &
-    pid=$!
-    wait ${pid} && echo "Completed the snp-guest-kernel-deb command step, continuing with the SNP Guest launch process"
-  fi
 
   # Return error if user specified file that doesn't exist
   if [ ! -f "${IMAGE}" ] && ${SKIP_IMAGE_CREATE}; then
@@ -1163,6 +1187,7 @@ setup_and_launch_guest() {
 
     # Install the guest kernel, retrieve the initrd and then reboot
     local guest_kernel_version=$(get_guest_kernel_version)
+    build_snp_guest_kernel_debian
     local guest_kernel_package=$(get_guest_kernel_package)
     local guest_initrd_basename="init*${guest_kernel_version}*"
     local os_package_install_command=$(get_package_install_command)
@@ -1175,6 +1200,13 @@ setup_and_launch_guest() {
     ssh_guest_command "sudo cp $(realpath ${initrd_filepath}) /home/${GUEST_USER}"
     ssh_guest_command "sudo chmod 644 /home/${GUEST_USER}/$(basename $(realpath ${initrd_filepath}))"
     scp_guest_command "${GUEST_USER}@localhost:/home/${GUEST_USER}/$(basename $(realpath ${initrd_filepath}))" "${LAUNCH_WORKING_DIR}"
+
+    # Copy the guest vmlinuz in the guest home directory into the host
+    local vmlinuz_filepath=$(ssh_guest_command "ls /boot/vmlinuz*${guest_kernel_version}*")
+    vmlinuz_filepath=$(echo ${vmlinuz_filepath}| tr -d '\r')
+    ssh_guest_command "sudo cp $(realpath ${vmlinuz_filepath}) /home/${GUEST_USER}"
+    ssh_guest_command "sudo chmod 644 /home/${GUEST_USER}/$(basename $(realpath ${vmlinuz_filepath}))"
+    scp_guest_command "${GUEST_USER}@localhost:/home/${GUEST_USER}/$(basename $(realpath ${vmlinuz_filepath}))" "${LAUNCH_WORKING_DIR}"
 
     ssh_guest_command "sudo shutdown now" || true
     echo "true" > "${guest_kernel_installed_file}"
@@ -1584,17 +1616,33 @@ main() {
         shift; shift
         ;;
 
+      -glwd|--guest-dir)
+        LAUNCH_WORKING_DIR="${2}"
+        QEMU_CMDLINE_FILE="${LAUNCH_WORKING_DIR}/qemu.cmdline"
+        shift; shift
+        ;;
+
       -g-n|--guest-name)
         GUEST_NAME="${2}"
         LAUNCH_WORKING_DIR="${LAUNCH_WORKING_DIR}/${GUEST_NAME}"
         GUEST_SSH_KEY_PATH="${LAUNCH_WORKING_DIR}/${GUEST_NAME}-key"
         QEMU_CMDLINE_FILE="${LAUNCH_WORKING_DIR}/qemu.cmdline"
-        IMAGE="${LAUNCH_WORKING_DIR}/${GUEST_NAME}.img"
+        IMAGE="${LAUNCH_WORKING_DIR}/${GUEST_NAME}.qcow2"
         shift; shift
         ;;
 
       -g-p|--guest-port)
         HOST_SSH_PORT="${2}"
+        shift; shift
+        ;;
+
+      -g-k|--guest-key-path)
+        GUEST_SSH_KEY_PATH="${2}"
+        shift; shift
+        ;;
+
+      -g-k|--guest-user)
+        GUEST_USER="${2}"
         shift; shift
         ;;
 
@@ -1671,7 +1719,7 @@ main() {
       LAUNCH_WORKING_DIR="${WORKING_DIR}/launch/${GUEST_NAME}"
       GUEST_SSH_KEY_PATH="${LAUNCH_WORKING_DIR}/${GUEST_NAME}-key"
       QEMU_CMDLINE_FILE="${LAUNCH_WORKING_DIR}/qemu.cmdline"
-      IMAGE="${LAUNCH_WORKING_DIR}/${GUEST_NAME}.img"
+      IMAGE="${LAUNCH_WORKING_DIR}/${GUEST_NAME}.qcow2"
 
       copy_launch_binaries
       source "${LAUNCH_WORKING_DIR}/source-bins"
@@ -1683,6 +1731,9 @@ main() {
         echo -e "Setup directory does not exist, please run 'setup-host' prior to 'launch-guest'"
         return 1
       fi
+
+      # To support SNP ubuntu/RH guest launch from RHEL host
+      guest_lauch_pre_cleanup
 
       copy_launch_binaries
       source "${LAUNCH_WORKING_DIR}/source-bins"
