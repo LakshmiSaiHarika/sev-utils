@@ -538,7 +538,7 @@ create_guest_seed_image(){
         "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-user-data.yaml" \
         "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-metadata.yaml"
       ;;
-    fedora)
+    fedora | rhel)
       mv -v "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-user-data.yaml" "${LAUNCH_WORKING_DIR}/user-data"
       mv -v "${LAUNCH_WORKING_DIR}/${GUEST_NAME}-metadata.yaml" "${LAUNCH_WORKING_DIR}/meta-data"
 
