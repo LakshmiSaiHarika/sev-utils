@@ -1068,6 +1068,22 @@ get_package_install_command(){
   esac
 }
 
+build_snp_guest_kernel_debian() {
+  local linux_distro=$(get_linux_distro)
+  local guest_kernel_deb=$(echo "$(realpath ${SETUP_WORKING_DIR}/AMDSEV/linux/linux-image*snp-guest*.deb)" | grep -v dbg)
+
+  # Return error if user specified file that doesn't exist
+  if [ "${linux_distro}" = "rhel" ] && [ "${IS_RHEL_IMAGE}" = "false" ]; then
+    if [ ! -f "${guest_kernel_deb}" ]; then
+      echo -e "\nSNP Guest Kernel debian package doesn't exist in the host"
+      echo -e "Currently running snp-guest-kernel-deb command for the ubuntu SNP guest kernel package"
+      ./snp.sh snp-guest-kernel-deb &
+      pid=$!
+      wait ${pid} && echo "Completed the snp-guest-kernel-deb command step, continuing with the SNP Guest launch process"
+    fi
+  fi
+}
+
 get_guest_kernel_package(){
   local linux_distro=$(get_linux_distro)
   local guest_kernel_version=$(get_guest_kernel_version)
@@ -1168,6 +1184,7 @@ setup_and_launch_guest() {
 
     # Install the guest kernel, retrieve the initrd and then reboot
     local guest_kernel_version=$(get_guest_kernel_version)
+    build_snp_guest_kernel_debian
     local guest_kernel_package=$(get_guest_kernel_package)
     local guest_initrd_basename="init*${guest_kernel_version}*"
     local os_package_install_command=$(get_package_install_command)
