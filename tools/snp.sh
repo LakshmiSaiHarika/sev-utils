@@ -1117,6 +1117,10 @@ set_default_guest_kernel_append() {
         GUEST_KERNEL_APPEND="${GUEST_KERNEL_APPEND_RHEL}"
         return
       fi
+
+      # Guest root label points to ubuntu SNP guest image
+      GUEST_ROOT_LABEL="${GUEST_ROOT_LABEL_UBUNTU}"
+      GUEST_KERNEL_APPEND="${GUEST_KERNEL_APPEND_UBUNTU}"
       ;;
     *)
       >&2 echo -e "ERROR: ${linux_distro}"
