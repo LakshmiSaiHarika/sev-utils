@@ -1087,6 +1087,8 @@ get_guest_kernel_package(){
           echo $(realpath $(ls -t kernel-*${guest_kernel_version}*.rpm| grep -v header| head -1))
           return
         fi
+
+        echo "$(realpath ${SETUP_WORKING_DIR}/AMDSEV/linux/linux-image*snp-guest*.deb)" | grep -v dbg
         ;;
       *)
         >&2 echo -e "ERROR: ${linux_distro}"
