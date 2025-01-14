@@ -1181,6 +1181,13 @@ setup_and_launch_guest() {
     ssh_guest_command "sudo chmod 644 /home/${GUEST_USER}/$(basename $(realpath ${initrd_filepath}))"
     scp_guest_command "${GUEST_USER}@localhost:/home/${GUEST_USER}/$(basename $(realpath ${initrd_filepath}))" "${LAUNCH_WORKING_DIR}"
 
+    # Copy the guest vmlinuz in the guest home directory into the host
+    local vmlinuz_filepath=$(ssh_guest_command "ls /boot/vmlinuz*${guest_kernel_version}*")
+    vmlinuz_filepath=$(echo ${vmlinuz_filepath}| tr -d '\r')
+    ssh_guest_command "sudo cp $(realpath ${vmlinuz_filepath}) /home/${GUEST_USER}"
+    ssh_guest_command "sudo chmod 644 /home/${GUEST_USER}/$(basename $(realpath ${vmlinuz_filepath}))"
+    scp_guest_command "${GUEST_USER}@localhost:/home/${GUEST_USER}/$(basename $(realpath ${vmlinuz_filepath}))" "${LAUNCH_WORKING_DIR}"
+
     ssh_guest_command "sudo shutdown now" || true
     echo "true" > "${guest_kernel_installed_file}"
 
