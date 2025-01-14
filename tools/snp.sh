@@ -1058,6 +1058,8 @@ get_package_install_command(){
         echo "dnf install -y"
         return
       fi
+
+      echo "dpkg -i"
       ;;
     *)
       >&2 echo -e "ERROR: ${linux_distro}"
