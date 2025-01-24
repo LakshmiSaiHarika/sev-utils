@@ -191,6 +191,26 @@ verify_host_snp_support() {
   fi
 }
 
+verify_host_snp_enablement() {
+  echo -e "Verifying if SME, SNP are enabled in the host from MSR 0xC0010010..."
+
+  sudo modprobe msr
+  local host_msr_read=$(echo "$(sudo rdmsr -d 0xc0010010)")
+
+  # Map all the security bit values in a single associative array
+  declare -A security_bit_values=(
+    [SME]=$(echo $((((${host_msr_read} & (1 << 23)) >> 23))))
+    [SNP]=$(echo $((((${host_msr_read} & (1 << 24)) >> 24))))
+  )
+
+  local feature_error=$(verify_all_security_bits "${security_bit_values[@]}")
+  if [[ -n "${feature_error}" ]]; then
+    >&2 echo -e "ERROR: SME, SNP are not enabled in the host BIOS"
+    >&2 echo -e "${feature_error}"
+    return 1
+  fi
+}
+
 verify_snp_host() {
   if ! sudo dmesg | grep -i "SEV-SNP enabled\|SEV-SNP supported" 2>&1 >/dev/null; then
     echo -e "SEV-SNP not enabled on the host. Please follow these steps to enable:\n\
@@ -1401,6 +1421,7 @@ main() {
       ;;
 
     setup-host)
+      verify_host_snp_enablement
       verify_host_snp_support
       install_dependencies
 
@@ -1424,6 +1445,7 @@ main() {
       copy_launch_binaries
       source "${LAUNCH_WORKING_DIR}/source-bins"
 
+      verify_host_snp_enablement
       verify_snp_host
       install_dependencies
 
